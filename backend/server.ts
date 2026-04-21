@@ -1,8 +1,10 @@
-import type { Request, Response } from "express";
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const session = require("express-session");
+const helmet = require("helmet");
+const morgan = require("morgan");
+const rateLimit = require("express-rate-limit");
 dotenv.config();
 const port = process.env.PORT || 3000;
 
@@ -13,6 +15,15 @@ const taskRouter = require("./routes/tasks");
 const authRouter = require("./routes/auth");
 // middlewares
 app.use(cors());
+app.use(helmet());
+app.use(
+  rateLimit({
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    max: 40, // limit each IP to 40 requests per windowMs
+    message: "Too many requests, please try again later.",
+  }),
+);
+app.use(morgan("dev"));
 app.use(
   session({
     secret: process.env.JWT_SECRET,
