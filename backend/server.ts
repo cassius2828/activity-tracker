@@ -10,7 +10,7 @@ const app = express();
 
 // routers
 const taskRouter = require("./routes/tasks");
-const userRouter = require("./routes/users");
+const authRouter = require("./routes/auth");
 // middlewares
 app.use(cors());
 app.use(
@@ -24,11 +24,7 @@ app.use(express.json());
 
 // routers
 app.use("/api/tasks", taskRouter);
-app.use("/api/users", userRouter);
-
-app.get("/", (req: Request, res: Response) => {
-  res.send("Hello World");
-});
+app.use("/api/auth", authRouter);
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
