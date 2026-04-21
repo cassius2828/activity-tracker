@@ -10,7 +10,7 @@ const {
 } = process.env;
 const config = drizzle.defineConfig({
   dialect: "postgresql",
-  schema: "./src/db/schema.ts",
+  schema: "./config/schema.ts",
   out: "./drizzle",
   dbCredentials: {
     url: DATABASE_URL,
