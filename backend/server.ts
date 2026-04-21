@@ -8,9 +8,9 @@ const port = process.env.PORT || 3000;
 const app = express();
 
 // routers
-
-const taskRouter = require("./routes/taskRouter");
-const userRouter = require("./routes/userRouter");
+const taskRouter = require("./routes/tasks");
+const userRouter = require("./routes/users");
+// middlewares
 app.use(cors());
 app.use(
   session({
@@ -19,7 +19,9 @@ app.use(
     saveUninitialized: true,
   }),
 );
+app.use(express.json());
 
+// routers
 app.use("/api/tasks", taskRouter);
 app.use("/api/users", userRouter);
 
