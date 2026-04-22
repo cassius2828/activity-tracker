@@ -35,7 +35,7 @@ const tasks = pgTable(
   "tasks",
   {
     id: primaryKey({ columns: [integer()] }),
-    userId: integer().references(() => users.id),
+    userId: integer().references(() => users.id, { onDelete: "cascade" }),
     title: text().notNull(),
     description: text().notNull(),
     dueDate: timestamp(),
@@ -66,4 +66,27 @@ const tasks = pgTable(
   ],
 );
 
-module.exports = { users, tasks };
+const sessions = pgTable('sessions', {
+  id: primaryKey({ columns: [text()] }),
+  userId: integer()
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  token: text().notNull(),
+  createdAt: timestamp().notNull().defaultNow(),
+  updatedAt: timestamp().notNull().defaultNow(),
+  lastUsedAt: timestamp().notNull().defaultNow(),
+},
+(table: {
+  userId: AnyPgColumn;
+  token: AnyPgColumn;
+  createdAt: AnyPgColumn;
+  updatedAt: AnyPgColumn;
+}) => [
+  index("idx_sessions_userId").on(table.userId),
+  index("idx_sessions_token").on(table.token),
+  index("idx_sessions_createdAt").on(table.createdAt),
+  index("idx_sessions_updatedAt").on(table.updatedAt),
+],
+);
+
+module.exports = { users, tasks, sessions };
