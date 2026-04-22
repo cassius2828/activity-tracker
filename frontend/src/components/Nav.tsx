@@ -9,7 +9,7 @@ const Nav = () => {
                 <div className="flex gap-4">
                     <Link to={{ pathname: "/auth", search: "?mode=login" }}>Auth</Link>
                     <Link to="/tasks">Tasks</Link>
-                    <Link to="/profile/:id">Profile</Link>
+                    <Link to="/profile/1">Profile</Link>
                 </div>
             </nav>
         </header>
