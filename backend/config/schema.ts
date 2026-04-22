@@ -66,27 +66,38 @@ const tasks = pgTable(
   ],
 );
 
-const sessions = pgTable('sessions', {
-  id: primaryKey({ columns: [text()] }),
-  userId: integer()
-    .references(() => users.id, { onDelete: "cascade" })
-    .notNull(),
-  token: text().notNull(),
-  createdAt: timestamp().notNull().defaultNow(),
-  updatedAt: timestamp().notNull().defaultNow(),
-  lastUsedAt: timestamp().notNull().defaultNow(),
-},
-(table: {
-  userId: AnyPgColumn;
-  token: AnyPgColumn;
-  createdAt: AnyPgColumn;
-  updatedAt: AnyPgColumn;
-}) => [
-  index("idx_sessions_userId").on(table.userId),
-  index("idx_sessions_token").on(table.token),
-  index("idx_sessions_createdAt").on(table.createdAt),
-  index("idx_sessions_updatedAt").on(table.updatedAt),
-],
+const sessions = pgTable(
+  "sessions",
+  {
+    id: primaryKey({ columns: [text()] }),
+    userId: integer()
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    tokenHash: text().notNull(),
+    expiresAt: timestamp().notNull(),
+    revokedAt: timestamp(),
+    ipAddress: text().notNull(),
+    userAgent: text().notNull(),
+    deviceName: text().notNull(),
+    createdAt: timestamp().notNull().defaultNow(),
+    updatedAt: timestamp().notNull().defaultNow(),
+    lastUsedAt: timestamp().notNull().defaultNow(),
+  },
+  (table: {
+    userId: AnyPgColumn;
+    tokenHash: AnyPgColumn;
+    createdAt: AnyPgColumn;
+    updatedAt: AnyPgColumn;
+    ipAddress: AnyPgColumn;
+    revokedAt: AnyPgColumn;
+  }) => [
+    index("idx_sessions_userId").on(table.userId),
+    index("idx_sessions_tokenHash").on(table.tokenHash),
+    index("idx_sessions_createdAt").on(table.createdAt),
+    index("idx_sessions_updatedAt").on(table.updatedAt),
+    index("idx_sessions_ipAddress").on(table.ipAddress),
+    index("idx_sessions_revokedAt").on(table.revokedAt),
+  ],
 );
 
 module.exports = { users, tasks, sessions };

@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 const db = require("../config/db");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
-const { users } = require("../config/schema");
+const { users, sessions } = require("../config/schema");
 
 const login = async (req: Request, res: Response) => {
   const inValidLoginAttemptResponse = res
@@ -69,7 +69,23 @@ const register = async (req: Request, res: Response) => {
   }
 };
 
+const logout = async (req: Request, res: Response) => {
+  try {
+    // i want to use session table to control the logout 
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    // delete session from database
+    await db.delete(sessions).where(sessions.token === token);
+    res.status(200).json({ message: "Logout successful" });
+  } catch (err) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 module.exports = {
   login,
   register,
+  logout,
 };
