@@ -1,29 +1,32 @@
-const express = require("express");
-const dotenv = require("dotenv");
-const cors = require("cors");
-const session = require("express-session");
-const helmet = require("helmet");
-const morgan = require("morgan");
-const rateLimit = require("express-rate-limit");
-dotenv.config();
-const port = process.env.PORT || 3000;
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import session from "express-session";
+import helmet from "helmet";
+import morgan from "morgan";
+import { rateLimit } from "express-rate-limit";
+
+import authRouter from "./routes/auth";
+import taskRouter from "./routes/tasks";
+
+const port = process.env.PORT ?? 3000;
 
 const app = express();
 
-// routers
-const taskRouter = require("./routes/tasks");
-const authRouter = require("./routes/auth");
-// middlewares
 app.use(cors());
 app.use(helmet());
 app.use(
   rateLimit({
-    windowMs: 5 * 60 * 1000, // 5 minutes
-    max: 40, // limit each IP to 40 requests per windowMs
+    windowMs: 5 * 60 * 1000,
+    max: 40,
     message: "Too many requests, please try again later.",
   }),
 );
 app.use(morgan("dev"));
+
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET is not defined");
+}
 app.use(
   session({
     secret: process.env.JWT_SECRET,
@@ -33,7 +36,6 @@ app.use(
 );
 app.use(express.json());
 
-// routers
 app.use("/api/tasks", taskRouter);
 app.use("/api/auth", authRouter);
 

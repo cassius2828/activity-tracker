@@ -1,6 +1,6 @@
-const dotenv = require("dotenv");
-dotenv.config();
-const drizzle = require("drizzle-kit");
+import "dotenv/config";
+import { defineConfig } from "drizzle-kit";
+
 const {
   DATABASE_URL,
   DATABASE_NAME,
@@ -8,16 +8,16 @@ const {
   DATABASE_PASSWORD,
   DATABASE_PORT,
 } = process.env;
-const config = drizzle.defineConfig({
+
+export default defineConfig({
   dialect: "postgresql",
   schema: "./config/schema.ts",
   out: "./drizzle",
   dbCredentials: {
-    url: DATABASE_URL,
-    database: DATABASE_NAME,
-    user: DATABASE_USER,
-    password: DATABASE_PASSWORD,
-    port: DATABASE_PORT,
+    url: DATABASE_URL!,
+    database: DATABASE_NAME!,
+    user: DATABASE_USER!,
+    password: DATABASE_PASSWORD!,
+    port: DATABASE_PORT ? Number(DATABASE_PORT) : undefined,
   },
 });
-module.exports = config;

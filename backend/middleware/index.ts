@@ -1,12 +1,12 @@
 import type { Request, Response, NextFunction } from "express";
-const jwt = require("jsonwebtoken");
+import jwt from "jsonwebtoken";
 
 type JwtPayload = {
   userId: string | number;
   role: "admin" | "user";
 };
 
-const isSignedIn = (req: Request, res: Response, next: NextFunction) => {
+export const isSignedIn = (req: Request, res: Response, next: NextFunction) => {
   if (!process.env.JWT_SECRET) {
     throw new Error("JWT_SECRET is not defined");
   }
@@ -32,11 +32,9 @@ const isSignedIn = (req: Request, res: Response, next: NextFunction) => {
   next();
 };
 
-const isAdmin = (req: Request, res: Response, next: NextFunction) => {
+export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
   if (req.user?.role !== "admin") {
     return res.status(403).json({ message: "Forbidden" });
   }
   next();
 };
-
-module.exports = { isSignedIn, isAdmin };
