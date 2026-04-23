@@ -3,13 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../config/db";
 import { tasks as tasksTable } from "../config/schema";
 import type { NewTask } from "../types";
-
-const parseId = (value: string | string[] | undefined): number | null => {
-  const raw = Array.isArray(value) ? value[0] : value;
-  if (!raw) return null;
-  const id = Number(raw);
-  return Number.isInteger(id) ? id : null;
-};
+import { parseId } from "../utils";
 
 export const createTask = async (req: Request, res: Response) => {
   try {
@@ -43,8 +37,8 @@ export const createTask = async (req: Request, res: Response) => {
 
 export const getTasks = async (_req: Request, res: Response) => {
   try {
-    const rows = await db.select().from(tasksTable);
-    res.status(200).json(rows);
+    const tasks = await db.select().from(tasksTable);
+    res.status(200).json(tasks);
   } catch (err) {
     res.status(500).json({ message: "Internal server error" });
   }
@@ -77,16 +71,13 @@ export const getTasksByUserId = async (req: Request, res: Response) => {
     if (userId === null) {
       return res.status(400).json({ message: "Invalid user id" });
     }
-    if (userId !== req.user!.id) {
-      return res.status(403).json({ message: "Unauthorized" });
-    }
 
-    const rows = await db
+    const tasks = await db
       .select()
       .from(tasksTable)
       .where(eq(tasksTable.userId, userId));
 
-    res.status(200).json(rows);
+    res.status(200).json(tasks);
   } catch (err) {
     res.status(500).json({ message: "Internal server error" });
   }
@@ -133,7 +124,7 @@ export const deleteTask = async (req: Request, res: Response) => {
     }
 
     const [task] = await db
-      .select()
+      .select({ userId: tasksTable.userId })
       .from(tasksTable)
       .where(eq(tasksTable.id, id));
 

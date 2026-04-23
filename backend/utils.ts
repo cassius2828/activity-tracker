@@ -1,24 +1,14 @@
 import crypto from "node:crypto";
-import type { Request } from "express";
+import type { Request, Response } from "express";
 
 import { db } from "./config/db";
 import { sessions } from "./config/schema";
 import type { User } from "./types";
+import { SESSION_COOKIE_MAX_AGE_MS } from "./consts";
 
 const headerString = (value: string | string[] | undefined) =>
   Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 
-/**
- * Deterministic hash for opaque session tokens.
- *
- * SHA-256 is the right tool for this (NOT bcrypt):
- * - The input is already 256 bits of cryptographic randomness, so
- *   the slow-hashing properties of bcrypt add no security.
- * - bcrypt is non-deterministic (random salt per call), so it cannot
- *   be used for equality lookups against a stored hash.
- *
- * Use bcrypt for *passwords*, this for *session tokens*.
- */
 export const hashToken = (token: string): string =>
   crypto.createHash("sha256").update(token).digest("hex");
 
@@ -40,7 +30,7 @@ export const createSession = async ({
     .values({
       userId: user.id,
       tokenHash,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      expiresAt: new Date(Date.now() + SESSION_COOKIE_MAX_AGE_MS),
       ipAddress: req.ip ?? "",
       userAgent: headerString(req.headers["user-agent"]),
       deviceName: headerString(req.headers["x-device-name"]) || "unknown",
@@ -56,4 +46,20 @@ export const createSession = async ({
       role: user.role,
     },
   };
+};
+
+export const parseId = (value: string | string[] | undefined): number | null => {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw) return null;
+  const id = Number(raw);
+  return Number.isInteger(id) ? id : null;
+};
+
+export const setSessionCookie = (res: Response, sessionToken: string) => {
+  res.cookie("sessionToken", sessionToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: SESSION_COOKIE_MAX_AGE_MS,
+  });
 };
