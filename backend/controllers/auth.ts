@@ -4,13 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../config/db";
 import { sessions, users } from "../config/schema";
 import { BCRYPT_SALT_ROUNDS } from "../consts";
-import {
-  createSession,
-  hashToken,
-  setSessionCookie,
-} from "../utils";
-
-
+import { createSession, hashToken, setSessionCookie } from "../utils";
 
 export const login = async (req: Request, res: Response) => {
   try {

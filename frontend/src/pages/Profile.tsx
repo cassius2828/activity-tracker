@@ -9,32 +9,15 @@ type DummyProfile = {
   tasksDone: number;
 };
 
-const DUMMY_BY_ID: Record<string, DummyProfile> = {
-  "1": {
-    displayName: "Alex Morgan",
-    email: "alex.morgan@example.com",
-    role: "admin",
-    joined: "2026-01-12",
-    tasksOpen: 6,
-    tasksDone: 14,
-  },
-  "2": {
-    displayName: "Jordan Lee",
-    email: "jordan.lee@example.com",
-    role: "user",
-    joined: "2026-03-02",
-    tasksOpen: 3,
-    tasksDone: 9,
-  },
-};
+const DUMMY_BY_ID: Record<string, DummyProfile> = {};
 
 const FALLBACK: DummyProfile = {
-  displayName: "Demo user",
-  email: "you@example.com",
+  displayName: "",
+  email: "",
   role: "user",
-  joined: "2026-04-01",
-  tasksOpen: 4,
-  tasksDone: 11,
+  joined: "",
+  tasksOpen: 0,
+  tasksDone: 0,
 };
 
 const Profile = () => {

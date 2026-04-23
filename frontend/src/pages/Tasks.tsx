@@ -10,36 +10,7 @@ type DummyTask = {
   priority: Priority;
 };
 
-const DUMMY_TASKS: DummyTask[] = [
-  {
-    id: "1",
-    title: "Draft project README",
-    description: "Outline setup, stack, and env vars for new contributors.",
-    dueDate: "2026-04-22",
-    priority: "high",
-  },
-  {
-    id: "2",
-    title: "Wire auth to API",
-    description: "Login/register forms, token storage, and protected fetch wrapper.",
-    dueDate: "2026-04-25",
-    priority: "medium",
-  },
-  {
-    id: "3",
-    title: "Review task filters UX",
-    description: "Confirm priority + date range behavior on small screens.",
-    dueDate: "2026-04-18",
-    priority: "low",
-  },
-  {
-    id: "4",
-    title: "Backfill sample data",
-    description: "Seed script or manual inserts for demo screenshots.",
-    dueDate: "2026-05-01",
-    priority: "none",
-  },
-];
+const DUMMY_TASKS: DummyTask[] = [];
 
 const priorityLabel: Record<Priority, string> = {
   none: "None",

@@ -25,10 +25,10 @@ const login = async (loginBody: LoginBody) => {
   }
 };
 
-const signup = async (signupBody: SignupBody) => {
+const register = async (signupBody: SignupBody) => {
   try {
     const response = await axios.post<LoginResponse>(
-      import.meta.env.BACKEND_URL + "/auth/signup",
+      import.meta.env.BACKEND_URL + "/auth/register",
       signupBody,
     );
     return response.data;
@@ -38,4 +38,4 @@ const signup = async (signupBody: SignupBody) => {
   }
 };
 
-export { login, signup };
+export { login, register };

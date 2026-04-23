@@ -40,7 +40,7 @@ const Nav = () => {
             </NavLink>
           </li>
           <li>
-            <NavLink to="/profile/1" className={navLinkClass}>
+            <NavLink to="/profile/:id" className={navLinkClass}>
               Profile
             </NavLink>
           </li>
