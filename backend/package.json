@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "tsx watch server.ts",
+    "dev": "tsx watch server.ts",
+    "start": "node server.ts",
     "typecheck": "tsc --noEmit",
     "clean:install": "npx --yes rimraf node_modules package-lock.json && npm install"
   },
@@ -37,7 +38,6 @@
     "@types/node": "^25.6.0",
     "@types/pg": "^8.20.0",
     "drizzle-kit": "^0.31.10",
-    "nodemon": "^3.1.14",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3"
   }
