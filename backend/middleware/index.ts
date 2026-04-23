@@ -1,3 +1,4 @@
+/** Cookie session lookup → attaches `req.user` / `req.authSession` for downstream handlers. */
 import { eq } from "drizzle-orm";
 import type { NextFunction, Request, Response } from "express";
 import db from "../config/db";
@@ -10,6 +11,7 @@ export const isSignedIn = async (
   next: NextFunction,
 ) => {
   try {
+    // Opaque token from httpOnly cookie — matched via SHA-256 hash in `sessions`
     const sessionToken = req.cookies.sessionToken;
     if (!sessionToken) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -38,6 +40,7 @@ export const isSignedIn = async (
       return res.status(401).json({ message: "Unauthorized" });
     }
 
+    // Never send password hash to route handlers or JSON serializers
     const { password: _password, ...safeUser } = user;
     req.user = safeUser;
     req.authSession = session;
@@ -47,10 +50,6 @@ export const isSignedIn = async (
   }
 };
 
-/**
- * Must run AFTER `isSignedIn` so `req.user` is populated.
- * Mount as: router.use(isSignedIn, isAdmin)
- */
 export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
   if (!req.user) {
     return res.status(401).json({ message: "Unauthorized" });

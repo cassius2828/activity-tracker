@@ -91,6 +91,7 @@ export const logout = async (req: Request, res: Response) => {
     }
     const tokenHash = hashToken(sessionToken);
     await db.delete(sessions).where(eq(sessions.tokenHash, tokenHash));
+    // Clear client cookie even if DB row was already gone
     res.clearCookie("sessionToken");
     return res.status(200).json({ message: "Logout successful" });
   } catch (err) {

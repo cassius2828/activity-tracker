@@ -1,3 +1,4 @@
+/** Augments Express `Request` for cookie-based DB sessions (this app does not use `express-session`). */
 import type { DbSession, User } from "../types";
 
 declare global {

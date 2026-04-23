@@ -131,6 +131,7 @@ export const deleteTask = async (req: Request, res: Response) => {
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
+    // Owner or admin may delete
     if (task.userId !== req.user!.id && req.user!.role !== "admin") {
       return res.status(403).json({ message: "Unauthorized" });
     }

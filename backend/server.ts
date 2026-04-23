@@ -1,3 +1,4 @@
+/** HTTP API: Express app wiring, global middleware, route mounts. */
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -12,6 +13,7 @@ const port = process.env.PORT ?? 3000;
 
 const app = express();
 
+// Middleware
 app.use(cors());
 app.use(cookieParser());
 app.use(helmet());
@@ -23,16 +25,13 @@ app.use(
   }),
 );
 app.use(morgan("dev"));
-
-if (!process.env.JWT_SECRET) {
-  throw new Error("JWT_SECRET is not defined");
-}
-
 app.use(express.json());
 
+// Routers
 app.use("/api/tasks", taskRouter);
 app.use("/api/auth", authRouter);
 
+// Start server
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });

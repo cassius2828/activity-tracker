@@ -1,3 +1,4 @@
+/** Drizzle table + enum definitions — migrations / `drizzle-kit` read this file. */
 import crypto from "node:crypto";
 import {
   pgTable,
@@ -9,6 +10,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
+// Postgres enums — map to constrained columns below
 export const roleEnum = pgEnum("role", ["admin", "user"]);
 export const priorityEnum = pgEnum("priority", [
   "none",
@@ -63,6 +65,7 @@ export const tasks = pgTable(
   ],
 );
 
+// Server-side sessions: cookie holds random token; DB stores hash + metadata
 export const sessions = pgTable(
   "sessions",
   {

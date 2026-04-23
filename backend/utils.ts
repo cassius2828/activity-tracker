@@ -1,14 +1,16 @@
+/** Auth helpers: opaque session tokens, DB session rows, httpOnly cookie. */
 import crypto from "node:crypto";
 import type { Request, Response } from "express";
-
 import { db } from "./config/db";
 import { sessions } from "./config/schema";
 import type { User } from "./types";
 import { SESSION_COOKIE_MAX_AGE_MS } from "./consts";
 
+// Normalize Express header values (string | string[] | undefined)
 const headerString = (value: string | string[] | undefined) =>
   Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 
+// Store only a hash of the session token in the DB — cookie carries the raw value
 export const hashToken = (token: string): string =>
   crypto.createHash("sha256").update(token).digest("hex");
 
@@ -48,6 +50,7 @@ export const createSession = async ({
   };
 };
 
+/** Route params are strings; treat non-integers as invalid. */
 export const parseId = (value: string | string[] | undefined): number | null => {
   const raw = Array.isArray(value) ? value[0] : value;
   if (!raw) return null;
