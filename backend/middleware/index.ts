@@ -1,39 +1,61 @@
-import type { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import { eq } from "drizzle-orm";
+import type { NextFunction, Request, Response } from "express";
+import db from "../config/db";
+import { sessions, users } from "../config/schema";
+import { hashToken } from "../utils";
 
-type JwtPayload = {
-  userId: string | number;
-  role: "admin" | "user";
+export const isSignedIn = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const sessionToken = req.cookies.sessionToken;
+    if (!sessionToken) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const tokenHash = hashToken(sessionToken);
+
+    const [session] = await db
+      .select()
+      .from(sessions)
+      .where(eq(sessions.tokenHash, tokenHash));
+
+    if (!session) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    if (session.expiresAt < new Date() || session.revokedAt !== null) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, session.userId));
+
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { password: _password, ...safeUser } = user;
+    req.user = safeUser;
+    req.authSession = session;
+    next();
+  } catch (err) {
+    next(err);
+  }
 };
 
-export const isSignedIn = (req: Request, res: Response, next: NextFunction) => {
-  if (!process.env.JWT_SECRET) {
-    throw new Error("JWT_SECRET is not defined");
-  }
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-  const token = authHeader.split(" ")[1];
-
-  const decoded = jwt.verify(token, process.env.JWT_SECRET) as JwtPayload;
-  if (!decoded) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-  const id = Number(decoded.userId);
-  if (!Number.isFinite(id)) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-  req.user = {
-    userId: decoded.userId,
-    role: decoded.role,
-    id,
-  };
-  next();
-};
-
+/**
+ * Must run AFTER `isSignedIn` so `req.user` is populated.
+ * Mount as: router.use(isSignedIn, isAdmin)
+ */
 export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
-  if (req.user?.role !== "admin") {
+  if (!req.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Forbidden" });
   }
   next();

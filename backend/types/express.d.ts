@@ -1,12 +1,13 @@
-import "express-serve-static-core";
+import type { DbSession, User } from "../types";
 
-declare module "express-serve-static-core" {
-  interface Request {
-    user?: {
-      id: number;
-      userId: string | number;
-      role: "admin" | "user";
-    };
+declare global {
+  namespace Express {
+    interface Request {
+      /** Authenticated user (password stripped). */
+      user?: Omit<User, "password">;
+      /** DB session row from cookie token lookup — do not use `req.session` (that is express-session). */
+      authSession?: DbSession;
+    }
   }
 }
 
