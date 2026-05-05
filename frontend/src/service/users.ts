@@ -1,4 +1,4 @@
-import axios from "axios";
+import { api } from "./api";
 type User = {
   id: string;
   email: string;
@@ -21,9 +21,7 @@ type UpdateUserBody = {
 
 const getUsers = async () => {
   try {
-    const response = await axios.get<User[]>(
-      import.meta.env.BACKEND_URL + "/users",
-    );
+    const response = await api.get<User[]>("/users");
     return response.data;
   } catch (err) {
     console.error(err);
@@ -33,9 +31,7 @@ const getUsers = async () => {
 
 const getUserById = async (id: string) => {
   try {
-    const response = await axios.get<User>(
-      import.meta.env.BACKEND_URL + "/users/" + id,
-    );
+    const response = await api.get<User>("/users/" + id);
     return response.data;
   } catch (err) {
     console.error(err);
@@ -45,10 +41,7 @@ const getUserById = async (id: string) => {
 
 const createUser = async (userBody: CreateUserBody) => {
   try {
-    const response = await axios.post<User>(
-      import.meta.env.BACKEND_URL + "/users",
-      userBody,
-    );
+    const response = await api.post<User>("/users", userBody);
     return response.data;
   } catch (err) {
     console.error(err);
@@ -58,10 +51,7 @@ const createUser = async (userBody: CreateUserBody) => {
 
 const updateUser = async (id: string, userBody: UpdateUserBody) => {
   try {
-    const response = await axios.put<User>(
-      import.meta.env.BACKEND_URL + "/users/" + id,
-      userBody,
-    );
+    const response = await api.put<User>("/users/" + id, userBody);
     return response.data;
   } catch (err) {
     console.error(err);

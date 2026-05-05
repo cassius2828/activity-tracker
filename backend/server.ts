@@ -10,11 +10,17 @@ import taskRouter from "./routes/tasks";
 import cookieParser from "cookie-parser";
 
 const port = process.env.PORT ?? 3000;
+const frontendOrigin = process.env.FRONTEND_ORIGIN ?? "http://localhost:5173";
 
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: frontendOrigin,
+    credentials: true,
+  }),
+);
 app.use(cookieParser());
 app.use(helmet());
 app.use(

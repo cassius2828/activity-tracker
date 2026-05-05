@@ -11,11 +11,11 @@ import { isSignedIn } from "../middleware";
 
 const router = Router();
 
-router.post("/", createTask, isSignedIn);
+router.post("/", isSignedIn, createTask);
 router.get("/", getTasks);
 router.get("/:id", getTaskById);
 router.get("/user/:userId", getTasksByUserId);
-router.put("/:id", updateTask, isSignedIn);
-router.delete("/:id", deleteTask, isSignedIn);
+router.put("/:id", isSignedIn, updateTask);
+router.delete("/:id", isSignedIn, deleteTask);
 
 export default router;

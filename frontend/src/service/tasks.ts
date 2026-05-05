@@ -1,4 +1,4 @@
-import axios from "axios";
+import { api } from "./api";
 type Task = {
   id: string;
   userId: string;
@@ -12,9 +12,7 @@ type Task = {
 
 const getTasks = async () => {
   try {
-    const response = await axios.get<Task[]>(
-      import.meta.env.BACKEND_URL + "/tasks",
-    );
+    const response = await api.get<Task[]>("/tasks");
     return response.data;
   } catch (err) {
     console.error(err);
@@ -24,9 +22,7 @@ const getTasks = async () => {
 
 const getTaskById = async (id: string) => {
   try {
-    const response = await axios.get<Task>(
-      import.meta.env.BACKEND_URL + "/tasks/" + id,
-    );
+    const response = await api.get<Task>("/tasks/" + id);
     return response.data;
   } catch (err) {
     console.error(err);
@@ -36,10 +32,7 @@ const getTaskById = async (id: string) => {
 
 const createTask = async (taskBody: Omit<Task, "id">) => {
   try {
-    const response = await axios.post<Task>(
-      import.meta.env.BACKEND_URL + "/tasks",
-      taskBody,
-    );
+    const response = await api.post<Task>("/tasks", taskBody);
     return response.data;
   } catch (err) {
     console.error(err);
@@ -49,10 +42,7 @@ const createTask = async (taskBody: Omit<Task, "id">) => {
 
 const updateTask = async (id: string, taskBody: Omit<Task, "id">) => {
   try {
-    const response = await axios.put<Task>(
-      import.meta.env.BACKEND_URL + "/tasks/" + id,
-      taskBody,
-    );
+    const response = await api.put<Task>("/tasks/" + id, taskBody);
     return response.data;
   } catch (err) {
     console.error(err);
@@ -62,9 +52,7 @@ const updateTask = async (id: string, taskBody: Omit<Task, "id">) => {
 
 const deleteTask = async (id: string) => {
   try {
-    const response = await axios.delete<{ message: string }>(
-      import.meta.env.BACKEND_URL + "/tasks/" + id,
-    );
+    const response = await api.delete<{ message: string }>("/tasks/" + id);
     return response.data;
   } catch (err) {
     console.error(err);

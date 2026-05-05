@@ -89,6 +89,18 @@ export const updateTask = async (req: Request, res: Response) => {
     if (id === null) {
       return res.status(400).json({ message: "Invalid task id" });
     }
+    const [taskToUpdate] = await db
+      .select()
+      .from(tasksTable)
+      .where(eq(tasksTable.id, id));
+      
+    if (!taskToUpdate) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    if (req.user!.id !== taskToUpdate.userId) {
+      return res.status(403).json({ message: "Unauthorized to update this task" });
+    }
 
     const { title, description, dueDate, priority, category, status } =
       req.body as Partial<NewTask>;
