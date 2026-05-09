@@ -35,7 +35,11 @@ export const createTask = async (req: Request, res: Response) => {
   }
 };
 
-export const getTasks = async (_req: Request, res: Response) => {
+export const getTasksByTeamId = async (req: Request, res: Response) => {
+  const teamId = parseId(req.params.teamId);
+  if (teamId === null) {
+    return res.status(400).json({ message: "Invalid team id" });
+  }
   try {
     const tasks = await db.select().from(tasksTable);
     res.status(200).json(tasks);

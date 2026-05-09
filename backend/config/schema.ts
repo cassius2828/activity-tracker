@@ -29,6 +29,7 @@ export const users = pgTable(
   "users",
   {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    teamId: integer().references(() => teams.id, { onDelete: "set null" }),
     email: text().notNull().unique(),
     role: roleEnum().notNull().default("user"),
     password: text().notNull(),
@@ -37,8 +38,10 @@ export const users = pgTable(
   },
   (table) => [
     uniqueIndex("idx_users_email").on(table.email),
+    index("idx_users_teamId").on(table.teamId),
     index("idx_users_role").on(table.role),
     index("idx_users_createdAt").on(table.createdAt),
+    index("idx_users_updatedAt").on(table.updatedAt),
   ],
 );
 
@@ -64,7 +67,21 @@ export const tasks = pgTable(
     index("idx_tasks_status").on(table.status),
   ],
 );
-
+export const teams = pgTable(
+  "teams",
+  {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    name: text().notNull(),
+    description: text().notNull(),
+    createdAt: timestamp().notNull().defaultNow(),
+    updatedAt: timestamp().notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_teams_name").on(table.name),
+    index("idx_teams_createdAt").on(table.createdAt),
+    index("idx_teams_updatedAt").on(table.updatedAt),
+  ],
+);
 // Server-side sessions: cookie holds random token; DB stores hash + metadata
 export const sessions = pgTable(
   "sessions",

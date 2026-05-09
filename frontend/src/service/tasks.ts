@@ -10,9 +10,9 @@ type Task = {
   status: "pending" | "completed" | "in_progress";
 };
 
-const getTasks = async () => {
+const getTasksByTeamId = async (teamId: string) => {
   try {
-    const response = await api.get<Task[]>("/tasks");
+    const response = await api.get<Task[]>("/tasks/team/" + teamId);
     return response.data;
   } catch (err) {
     console.error(err);
@@ -59,4 +59,4 @@ const deleteTask = async (id: string) => {
     throw err;
   }
 };
-export { getTasks, getTaskById, createTask, updateTask, deleteTask };
+export { getTasksByTeamId, getTaskById, createTask, updateTask, deleteTask };
