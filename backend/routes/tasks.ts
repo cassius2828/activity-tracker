@@ -1,13 +1,21 @@
-const express = require('express');
-const router = express.Router();
-const { createTask, getTasks, getTaskById, getTasksByUserId, updateTask, deleteTask } = require('../controllers/tasks');
+import { Router } from "express";
+import {
+  createTask,
+  deleteTask,
+  getTaskById,
+  getTasksByTeamId,
+  getTasksByUserId,
+  updateTask,
+} from "../controllers/tasks";
+import { isSignedIn } from "../middleware";
 
-router.post('/', createTask);
-router.get('/', getTasks);
-router.get('/:id', getTaskById);
-router.get('/user/:userId', getTasksByUserId);
-router.put('/:id', updateTask);
-router.delete('/:id', deleteTask);
+const router = Router();
 
+router.post("/", isSignedIn, createTask);
+router.get("/team/:teamId", getTasksByTeamId);
+router.get("/user/:userId", getTasksByUserId);
+router.get("/:id", getTaskById);
+router.put("/:id", isSignedIn, updateTask);
+router.delete("/:id", isSignedIn, deleteTask);
 
-module.exports = router;
+export default router;

@@ -1,93 +1,203 @@
-const TaskModel = require("../models/Task");
+import type { Request, Response } from "express";
+import { desc, eq } from "drizzle-orm";
+import { db } from "../config/db";
+import { tasks as tasksTable } from "../config/schema";
+import type { NewTask } from "../types";
+import { parseId } from "../utils";
 
-const createTask = async (req: Request, res: Response) => {
+const DEFAULT_PAGE_LIMIT = 50;
+const MAX_PAGE_LIMIT = 200;
+
+const parsePagination = (req: Request) => {
+  const rawLimit = req.query.limit;
+  const rawOffset = req.query.offset;
+  const limit = (() => {
+    const n = Number(typeof rawLimit === "string" ? rawLimit : NaN);
+    if (!Number.isFinite(n) || n <= 0) return DEFAULT_PAGE_LIMIT;
+    return Math.min(Math.floor(n), MAX_PAGE_LIMIT);
+  })();
+  const offset = (() => {
+    const n = Number(typeof rawOffset === "string" ? rawOffset : NaN);
+    if (!Number.isFinite(n) || n < 0) return 0;
+    return Math.floor(n);
+  })();
+  return { limit, offset };
+};
+
+export const createTask = async (req: Request, res: Response) => {
   try {
-    const { title, description, dueDate, priority } = req.body;
-    const newTask = await TaskModel.create({
-      title,
-      description,
-      dueDate,
-      priority,
-    });
+    const { title, description, dueDate, priority, category, status, teamId } =
+      req.body as Partial<NewTask>;
+
+    if (!title || !description) {
+      return res
+        .status(400)
+        .json({ message: "title and description are required" });
+    }
+
+    const [newTask] = await db
+      .insert(tasksTable)
+      .values({
+        userId: req.user!.id,
+        teamId: teamId ?? null,
+        title,
+        description,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        priority,
+        category,
+        status,
+      })
+      .returning();
+
     res.status(201).json(newTask);
   } catch (err) {
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
-const getTasks = async (req: Request, res: Response) => {
+export const getTasksByTeamId = async (req: Request, res: Response) => {
+  const teamId = parseId(req.params.teamId);
+  if (teamId === null) {
+    return res.status(400).json({ message: "Invalid team id" });
+  }
   try {
-    const tasks = await TaskModel.find({});
+    const { limit, offset } = parsePagination(req);
+    const tasks = await db
+      .select()
+      .from(tasksTable)
+      .where(eq(tasksTable.teamId, teamId))
+      .orderBy(desc(tasksTable.updatedAt))
+      .limit(limit)
+      .offset(offset);
     res.status(200).json(tasks);
   } catch (err) {
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
-const getTaskById = async (req: Request, res: Response) => {
+export const getTaskById = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const task = await TaskModel.findById(id);
+    const id = parseId(req.params.id);
+    if (id === null) {
+      return res.status(400).json({ message: "Invalid task id" });
+    }
+
+    const [task] = await db
+      .select()
+      .from(tasksTable)
+      .where(eq(tasksTable.id, id));
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
     res.status(200).json(task);
   } catch (err) {
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
-const getTasksByUserId = async (req: Request, res: Response) => {
+export const getTasksByUserId = async (req: Request, res: Response) => {
   try {
-    const { userId } = req.params;
-    // ensure this is checking the token or session, however we decide to approach auth
-    if (userId !== req.user.id) {
-      return res.status(403).json({ message: "Unauthorized" });
+    const userId = parseId(req.params.userId);
+    if (userId === null) {
+      return res.status(400).json({ message: "Invalid user id" });
     }
-    const tasks = await TaskModel.find({ userId });
-    if (!tasks) {
-      return res.status(404).json({ message: "Tasks not found" });
-    }
+
+    const { limit, offset } = parsePagination(req);
+    const tasks = await db
+      .select()
+      .from(tasksTable)
+      .where(eq(tasksTable.userId, userId))
+      .orderBy(desc(tasksTable.updatedAt))
+      .limit(limit)
+      .offset(offset);
+
     res.status(200).json(tasks);
   } catch (err) {
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
-const updateTask = async (req: Request, res: Response) => {
+export const updateTask = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const { title, description, dueDate, priority } = req.body;
-    const updatedTask = await TaskModel.findByIdAndUpdate(
-      id,
-      { title, description, dueDate, priority },
-      { new: true },
-    );
+    const id = parseId(req.params.id);
+    if (id === null) {
+      return res.status(400).json({ message: "Invalid task id" });
+    }
+    const [taskToUpdate] = await db
+      .select()
+      .from(tasksTable)
+      .where(eq(tasksTable.id, id));
+
+    if (!taskToUpdate) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    // Anyone of these can edit:
+    //   - the task creator
+    //   - a teammate (same teamId, only if the task is on a team)
+    //   - an admin
+    const actor = req.user!;
+    const isOwner = actor.id === taskToUpdate.userId;
+    const isTeammate =
+      taskToUpdate.teamId !== null && actor.teamId === taskToUpdate.teamId;
+    const isAdmin = actor.role === "admin";
+    if (!isOwner && !isTeammate && !isAdmin) {
+      return res
+        .status(403)
+        .json({ message: "Unauthorized to update this task" });
+    }
+
+    const { title, description, dueDate, priority, category, status, teamId } =
+      req.body as Partial<NewTask>;
+
+    const [updatedTask] = await db
+      .update(tasksTable)
+      .set({
+        title,
+        description,
+        dueDate: dueDate ? new Date(dueDate) : undefined,
+        priority,
+        category,
+        status,
+        teamId: teamId === undefined ? undefined : teamId,
+        updatedAt: new Date(),
+      })
+      .where(eq(tasksTable.id, id))
+      .returning();
+
+    if (!updatedTask) {
+      return res.status(404).json({ message: "Task not found" });
+    }
     res.status(200).json(updatedTask);
   } catch (err) {
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
-const deleteTask = async (req: Request, res: Response) => {
+export const deleteTask = async (req: Request, res: Response) => {
   try {
-    const { id, userId } = req.params;
-    const task = await TaskModel.findById(id);
+    const id = parseId(req.params.id);
+    if (id === null) {
+      return res.status(400).json({ message: "Invalid task id" });
+    }
+
+    const [task] = await db
+      .select({ userId: tasksTable.userId })
+      .from(tasksTable)
+      .where(eq(tasksTable.id, id));
+
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
-    if (task.userId !== userId) {
+    // Owner or admin may delete
+    if (task.userId !== req.user!.id && req.user!.role !== "admin") {
       return res.status(403).json({ message: "Unauthorized" });
     }
-    await TaskModel.findByIdAndDelete(id);
+
+    await db.delete(tasksTable).where(eq(tasksTable.id, id));
     res.status(200).json({ message: "Task deleted successfully" });
   } catch (err) {
     res.status(500).json({ message: "Internal server error" });
   }
-}
-
-module.exports = {
-  getTaskById,
-  getTasksByUserId,
-  getTasks,
-  createTask,
-  updateTask,
-  deleteTask,
 };
