@@ -1,10 +1,9 @@
 import { api } from "./api";
-type User = {
-  id: string;
-  email: string;
-  role: "admin" | "user";
-  createdAt: string;
-  updatedAt: string;
+import type { TeamUser } from "../types/team";
+
+type User = TeamUser & {
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 type CreateUserBody = {
@@ -12,6 +11,7 @@ type CreateUserBody = {
   password: string;
   confirmPassword: string;
 };
+
 type UpdateUserBody = {
   email?: string;
   password?: string;
@@ -19,43 +19,24 @@ type UpdateUserBody = {
   role?: "admin" | "user";
 };
 
-const getUsers = async () => {
-  try {
-    const response = await api.get<User[]>("/users");
-    return response.data;
-  } catch (err) {
-    console.error(err);
-    throw err;
-  }
+export type { User, CreateUserBody, UpdateUserBody };
+
+export const getUsers = async () => {
+  const response = await api.get<User[]>("/users");
+  return response.data;
 };
 
-const getUserById = async (id: string) => {
-  try {
-    const response = await api.get<User>("/users/" + id);
-    return response.data;
-  } catch (err) {
-    console.error(err);
-    throw err;
-  }
+export const getUserById = async (id: string) => {
+  const response = await api.get<User>(`/users/${id}`);
+  return response.data;
 };
 
-const createUser = async (userBody: CreateUserBody) => {
-  try {
-    const response = await api.post<User>("/users", userBody);
-    return response.data;
-  } catch (err) {
-    console.error(err);
-    throw err;
-  }
+export const createUser = async (userBody: CreateUserBody) => {
+  const response = await api.post<User>("/users", userBody);
+  return response.data;
 };
 
-const updateUser = async (id: string, userBody: UpdateUserBody) => {
-  try {
-    const response = await api.put<User>("/users/" + id, userBody);
-    return response.data;
-  } catch (err) {
-    console.error(err);
-    throw err;
-  }
+export const updateUser = async (id: string, userBody: UpdateUserBody) => {
+  const response = await api.put<User>(`/users/${id}`, userBody);
+  return response.data;
 };
-export { getUsers, getUserById, createUser, updateUser };

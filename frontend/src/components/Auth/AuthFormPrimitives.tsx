@@ -38,6 +38,7 @@ export const AuthPanelHeader = ({
 type LabeledInputProps = {
   id: string;
   label: string;
+  error?: string | null;
 } & Pick<
   ComponentProps<"input">,
   "name" | "type" | "autoComplete" | "placeholder" | "value" | "onChange"
@@ -52,23 +53,39 @@ export const LabeledInput = ({
   placeholder,
   value,
   onChange,
-}: LabeledInputProps) => (
-  <div>
-    <label htmlFor={id} className={labelClass}>
-      {label}
-    </label>
-    <input
-      id={id}
-      name={name}
-      type={type}
-      autoComplete={autoComplete}
-      placeholder={placeholder}
-      className={inputClass}
-      value={value}
-      onChange={onChange}
-    />
-  </div>
-);
+  error,
+}: LabeledInputProps) => {
+  const errorId = error ? `${id}-error` : undefined;
+  return (
+    <div>
+      <label htmlFor={id} className={labelClass}>
+        {label}
+      </label>
+      <input
+        id={id}
+        name={name}
+        type={type}
+        autoComplete={autoComplete}
+        placeholder={placeholder}
+        className={`${inputClass} ${
+          error ? "border-rose-400/60 focus:border-rose-400" : ""
+        }`}
+        value={value}
+        onChange={onChange}
+        aria-invalid={Boolean(error)}
+        aria-describedby={errorId}
+      />
+      {error ? (
+        <p
+          id={errorId}
+          className="mt-1 text-[12px] font-medium text-rose-700 dark:text-rose-300"
+        >
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+};
 
 type AuthSubmitButtonProps = {
   isLoading: boolean;

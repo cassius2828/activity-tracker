@@ -1,7 +1,5 @@
-import AuthModal from "../components/Modals";
+import AuthModal from "../components/Auth";
 
 export default function Auth() {
-    // look for query to determine login or signup
-
-    return <AuthModal/>;
+  return <AuthModal />;
 }

@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
-import {
-  deleteTask,
-  getTaskById,
-  updateTask,
-  type Task,
-  type TaskInput,
-} from "../service/tasks";
-import TaskDetailsCard from "../components/TaskDetailsCard";
-import TaskFormModal from "../components/TaskFormModal";
+import { deleteTask, getTaskById, updateTask } from "../services/tasks";
+import type { Task, TaskInput } from "../types/task";
+import TaskDetailsCard from "../components/Task/TaskDetailsCard";
+import TaskFormModal from "../components/Task/TaskFormModal";
+import PageShell from "../components/Ui/PageShell";
+import ConfirmModal from "../components/Ui/ConfirmModal";
+import { useTaskPermissions } from "../hooks/useTaskPermissions";
+import { errorNoticeClass } from "../styles/classNames";
 
 const TaskDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -24,63 +24,34 @@ const TaskDetails = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Mirror backend rules from controllers/tasks.ts updateTask:
-  // owner OR teammate (when task has a teamId) OR admin.
-  const { canEdit, permissionReason } = useMemo(() => {
-    if (!task) return { canEdit: false, permissionReason: null as string | null };
-    if (!session) {
-      return {
-        canEdit: false,
-        permissionReason: "Sign in to edit this task.",
-      };
-    }
-    const isOwner = session.userId === task.userId;
-    const isTeammate =
-      task.teamId !== null && session.teamId === task.teamId;
-    const isAdmin = session.role === "admin";
-    if (isOwner || isTeammate || isAdmin) {
-      return { canEdit: true, permissionReason: null };
-    }
-    return {
-      canEdit: false,
-      permissionReason:
-        task.teamId !== null
-          ? "Only the task owner, a teammate, or an admin can edit this task."
-          : "Only the task owner or an admin can edit this personal task.",
-    };
-  }, [task, session]);
-
-  // Backend deletion is stricter: owner or admin only.
-  const canDelete = useMemo(() => {
-    if (!task || !session) return false;
-    return session.userId === task.userId || session.role === "admin";
-  }, [task, session]);
+  const { canEdit, canDelete, permissionReason } = useTaskPermissions(
+    task,
+    session,
+  );
 
   useEffect(() => {
     if (!id) return;
-    let cancelled = false;
+    const controller = new AbortController();
     const fetchTask = async () => {
       setIsLoading(true);
       setLoadError(null);
       try {
         const fetched = await getTaskById(id);
-        if (!cancelled) setTask(fetched);
-      } catch (err) {
-        console.error(err);
-        if (!cancelled) {
-          setTask(null);
-          setLoadError("Could not load this task.");
-        }
+        if (controller.signal.aborted) return;
+        setTask(fetched);
+      } catch {
+        if (controller.signal.aborted) return;
+        setTask(null);
+        setLoadError("Could not load this task.");
       } finally {
-        if (!cancelled) setIsLoading(false);
+        if (!controller.signal.aborted) setIsLoading(false);
       }
     };
     void fetchTask();
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [id]);
 
   const handleEditSubmit = async (input: TaskInput) => {
@@ -91,8 +62,8 @@ const TaskDetails = () => {
       const updated = await updateTask(task.id, input);
       setTask(updated);
       setIsEditing(false);
-    } catch (err) {
-      console.error(err);
+      toast.success("Task updated.");
+    } catch {
       setEditError("Could not save changes. Try again.");
     } finally {
       setIsSaving(false);
@@ -101,23 +72,20 @@ const TaskDetails = () => {
 
   const handleDelete = async () => {
     if (!task) return;
-    const confirmed = window.confirm(
-      "Delete this task? This cannot be undone.",
-    );
-    if (!confirmed) return;
     setIsDeleting(true);
     try {
       await deleteTask(task.id);
+      toast.success("Task deleted.");
       navigate(-1);
-    } catch (err) {
-      console.error(err);
-      setLoadError("Could not delete this task.");
+    } catch {
+      toast.error("Could not delete this task.");
       setIsDeleting(false);
+      setIsConfirmingDelete(false);
     }
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8 text-left sm:px-6 sm:py-10">
+    <PageShell>
       <nav className="mb-6 text-[13px]">
         <Link
           to="/teams"
@@ -133,11 +101,7 @@ const TaskDetails = () => {
         </p>
       )}
 
-      {!isLoading && loadError && (
-        <p className="rounded-xl border border-rose-400/40 bg-rose-500/10 px-4 py-3 text-[14px] text-rose-800 dark:text-rose-100">
-          {loadError}
-        </p>
-      )}
+      {!isLoading && loadError && <p className={errorNoticeClass}>{loadError}</p>}
 
       {!isLoading && !loadError && !task && (
         <p className="rounded-2xl border border-dashed border-[var(--border)] py-12 text-center text-[15px] text-[var(--text)]">
@@ -156,7 +120,7 @@ const TaskDetails = () => {
             setEditError(null);
             setIsEditing(true);
           }}
-          onDelete={canDelete ? () => void handleDelete() : undefined}
+          onDelete={canDelete ? () => setIsConfirmingDelete(true) : undefined}
         />
       )}
 
@@ -175,7 +139,20 @@ const TaskDetails = () => {
         }}
         onSubmit={handleEditSubmit}
       />
-    </div>
+
+      <ConfirmModal
+        open={isConfirmingDelete}
+        title="Delete task?"
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        isWorking={isDeleting}
+        onConfirm={() => void handleDelete()}
+        onCancel={() => {
+          if (!isDeleting) setIsConfirmingDelete(false);
+        }}
+      />
+    </PageShell>
   );
 };
 

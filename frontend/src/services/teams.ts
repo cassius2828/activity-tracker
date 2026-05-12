@@ -1,22 +1,7 @@
 import { api } from "./api";
+import type { Team, TeamRole, TeamUser } from "../types/team";
 
-export type TeamRole = "admin" | "user";
-
-export type TeamUser = {
-  id: string;
-  email: string;
-  role: TeamRole;
-  teamId: string | null;
-};
-
-export type Team = {
-  id: string;
-  name: string;
-  description: string;
-  memberIds: string[];
-  createdAt: string;
-  updatedAt: string;
-};
+export type { Team, TeamRole, TeamUser };
 
 export const getTeams = async () => {
   const response = await api.get<Team[]>("/teams");
@@ -79,10 +64,5 @@ export const assignUserToTeam = async ({
   const response = await api.put<{ message: string }>(`/teams/${teamId}/join`, {
     userId,
   });
-  return response.data;
-};
-
-export const getUserById = async (userId: string) => {
-  const response = await api.get<TeamUser>(`/users/${userId}`);
   return response.data;
 };

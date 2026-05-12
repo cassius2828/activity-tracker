@@ -1,64 +1,25 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import type {
-  Task,
-  TaskCategory,
-  TaskInput,
-  TaskPriority,
-  TaskStatus,
-} from "../service/tasks";
-import Select from "./Select";
-
-const inputClass =
-  "w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-2.5 text-[15px] text-[var(--text-h)] shadow-sm outline-none transition " +
-  "placeholder:text-[var(--text)]/60 " +
-  "focus:border-[var(--accent-border)] focus:ring-2 focus:ring-[var(--accent)]/25";
-
-const labelClass =
-  "mb-1.5 block text-[13px] font-medium text-[var(--text-h)]";
-
-const primaryBtnClass =
-  "rounded-xl bg-[var(--accent)] px-4 py-2.5 text-[14px] font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60";
-
-const subtleBtnClass =
-  "rounded-xl border border-[var(--border)] px-4 py-2.5 text-[14px] font-medium text-[var(--text-h)] transition hover:bg-[var(--code-bg)] disabled:cursor-not-allowed disabled:opacity-60";
-
-type FormState = {
-  title: string;
-  description: string;
-  dueDate: string;
-  priority: TaskPriority;
-  category: TaskCategory;
-  status: TaskStatus;
-  includeTeam: boolean;
-};
-
-const emptyForm = (): FormState => ({
-  title: "",
-  description: "",
-  dueDate: "",
-  priority: "none",
-  category: "other",
-  status: "pending",
-  includeTeam: false,
-});
-
-const toDateInputValue = (iso: string): string => {
-  if (!iso) return "";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  // <input type="date"> needs YYYY-MM-DD
-  return date.toISOString().slice(0, 10);
-};
-
-const fromTask = (task: Task, defaultTeamId: string | null | undefined): FormState => ({
-  title: task.title,
-  description: task.description,
-  dueDate: toDateInputValue(task.dueDate),
-  priority: task.priority,
-  category: task.category,
-  status: task.status,
-  includeTeam: task.teamId !== null && (defaultTeamId == null || task.teamId === defaultTeamId),
-});
+import type { Task, TaskInput } from "../../types/task";
+import Select from "../Ui/Select";
+import {
+  emptyTaskForm,
+  taskFormFromTask,
+  type TaskFormState,
+} from "../../utils/taskForm";
+import {
+  categoryOptions,
+  priorityOptions,
+  statusOptions,
+} from "../../constants/tasks";
+import { useModalChrome } from "../../hooks/useModalChrome";
+import {
+  errorNoticeClass,
+  eyebrowClass,
+  inputClass,
+  labelClass,
+  primaryBtnClass,
+  subtleBtnClass,
+} from "../../styles/classNames";
 
 type TaskFormModalProps = {
   open: boolean;
@@ -85,16 +46,18 @@ const TaskFormModal = ({
   onClose,
   onSubmit,
 }: TaskFormModalProps) => {
-  const [form, setForm] = useState<FormState>(emptyForm);
+  const [form, setForm] = useState<TaskFormState>(emptyTaskForm);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
+
+  useModalChrome({ open, onClose, lockClose: isSubmitting });
 
   useEffect(() => {
     if (!open) return;
     if (mode === "edit" && initialTask) {
-      setForm(fromTask(initialTask, currentTeamId ?? null));
+      setForm(taskFormFromTask(initialTask, currentTeamId ?? null));
     } else {
       setForm({
-        ...emptyForm(),
+        ...emptyTaskForm(),
         includeTeam: Boolean(defaultIncludeTeam && currentTeamId),
       });
     }
@@ -105,23 +68,12 @@ const TaskFormModal = ({
     titleInputRef.current?.focus();
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !isSubmitting) onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = "";
-    };
-  }, [open, isSubmitting, onClose]);
-
   if (!open) return null;
 
-  const updateField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
-    setForm((previous) => ({ ...previous, [key]: value }));
+  const updateField = <K extends keyof TaskFormState>(
+    key: K,
+    value: TaskFormState[K],
+  ) => setForm((previous) => ({ ...previous, [key]: value }));
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -142,6 +94,9 @@ const TaskFormModal = ({
   const titleLabel = mode === "create" ? "New task" : "Edit task";
   const submitLabel = mode === "create" ? "Create task" : "Save changes";
   const submittingLabel = mode === "create" ? "Creating..." : "Saving...";
+  const safeClose = () => {
+    if (!isSubmitting) onClose();
+  };
 
   return (
     <div
@@ -153,27 +108,21 @@ const TaskFormModal = ({
       <button
         type="button"
         aria-label="Close"
-        onClick={() => {
-          if (!isSubmitting) onClose();
-        }}
+        onClick={safeClose}
         className="absolute inset-0 h-full w-full cursor-default bg-black/50 backdrop-blur-sm"
       />
 
       <div className="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)] shadow-[var(--shadow)]">
         <header className="flex items-start justify-between gap-4 border-b border-[var(--border)] px-6 py-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
-              Task
-            </p>
+            <p className={eyebrowClass}>Task</p>
             <h2 className="!m-0 !text-xl !tracking-tight text-[var(--text-h)]">
               {titleLabel}
             </h2>
           </div>
           <button
             type="button"
-            onClick={() => {
-              if (!isSubmitting) onClose();
-            }}
+            onClick={safeClose}
             disabled={isSubmitting}
             className="rounded-lg px-2 py-1 text-[13px] font-medium text-[var(--text)] hover:bg-[var(--code-bg)] hover:text-[var(--text-h)] disabled:cursor-not-allowed disabled:opacity-60"
           >
@@ -183,9 +132,7 @@ const TaskFormModal = ({
 
         <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
           {errorMessage && (
-            <p className="rounded-xl border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-[13px] text-rose-800 dark:text-rose-100">
-              {errorMessage}
-            </p>
+            <p className={errorNoticeClass}>{errorMessage}</p>
           )}
 
           <div>
@@ -212,7 +159,9 @@ const TaskFormModal = ({
               id="task-form-description"
               className={`${inputClass} min-h-24 resize-y`}
               value={form.description}
-              onChange={(event) => updateField("description", event.target.value)}
+              onChange={(event) =>
+                updateField("description", event.target.value)
+              }
               placeholder="What needs to happen..."
               maxLength={1000}
               required
@@ -229,7 +178,9 @@ const TaskFormModal = ({
                 type="date"
                 className={inputClass}
                 value={form.dueDate}
-                onChange={(event) => updateField("dueDate", event.target.value)}
+                onChange={(event) =>
+                  updateField("dueDate", event.target.value)
+                }
               />
             </div>
             <div>
@@ -240,13 +191,17 @@ const TaskFormModal = ({
                 id="task-form-priority"
                 value={form.priority}
                 onChange={(event) =>
-                  updateField("priority", event.target.value as TaskPriority)
+                  updateField(
+                    "priority",
+                    event.target.value as TaskFormState["priority"],
+                  )
                 }
               >
-                <option value="none">None</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
+                {priorityOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </Select>
             </div>
             <div>
@@ -257,12 +212,17 @@ const TaskFormModal = ({
                 id="task-form-category"
                 value={form.category}
                 onChange={(event) =>
-                  updateField("category", event.target.value as TaskCategory)
+                  updateField(
+                    "category",
+                    event.target.value as TaskFormState["category"],
+                  )
                 }
               >
-                <option value="work">Work</option>
-                <option value="personal">Personal</option>
-                <option value="other">Other</option>
+                {categoryOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </Select>
             </div>
             <div>
@@ -273,12 +233,17 @@ const TaskFormModal = ({
                 id="task-form-status"
                 value={form.status}
                 onChange={(event) =>
-                  updateField("status", event.target.value as TaskStatus)
+                  updateField(
+                    "status",
+                    event.target.value as TaskFormState["status"],
+                  )
                 }
               >
-                <option value="pending">Pending</option>
-                <option value="in_progress">In progress</option>
-                <option value="completed">Completed</option>
+                {statusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </Select>
             </div>
           </div>
@@ -309,9 +274,7 @@ const TaskFormModal = ({
             <button
               type="button"
               className={subtleBtnClass}
-              onClick={() => {
-                if (!isSubmitting) onClose();
-              }}
+              onClick={safeClose}
               disabled={isSubmitting}
             >
               Cancel

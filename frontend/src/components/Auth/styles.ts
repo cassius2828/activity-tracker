@@ -1,4 +1,10 @@
-/** Shared Tailwind strings for auth panels */
+/** Auth-panel-specific styles. Shared primitives live in `src/styles/classNames.ts`. */
+
+export {
+  eyebrowClass,
+  inputClass,
+  labelClass,
+} from "../../styles/classNames";
 
 export const shellClass = "flex flex-col gap-6 text-left";
 
@@ -6,23 +12,12 @@ export const formStackClass = "flex flex-col gap-4";
 
 export const headerStackClass = "space-y-1";
 
-export const eyebrowClass =
-  "text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--accent)]";
-
 export const panelTitleClass =
   "text-2xl font-semibold tracking-tight text-[var(--text-h)] sm:text-[26px]";
 
 export const panelSubtitleClass = "text-[15px] leading-snug text-[var(--text)]";
 
-export const inputClass =
-  "w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-[15px] text-[var(--text-h)] shadow-sm outline-none transition " +
-  "placeholder:text-[var(--text)]/60 " +
-  "focus:border-[var(--accent-border)] focus:ring-2 focus:ring-[var(--accent)]/25 " +
-  "dark:bg-[color-mix(in_oklab,var(--bg)_100%,#000_12%)]";
-
-export const labelClass =
-  "mb-1.5 block text-left text-[13px] font-medium tracking-wide text-[var(--text-h)]";
-
+/** Auth submit is taller / bolder than the standard primaryBtn. */
 export const primarySubmitClass =
   "mt-1 w-full rounded-xl bg-[var(--accent)] py-3.5 text-[15px] font-semibold text-white shadow-md transition hover:brightness-110 active:scale-[0.99] dark:text-[#0c0a10]";
 

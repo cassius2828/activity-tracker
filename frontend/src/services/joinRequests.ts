@@ -1,18 +1,7 @@
 import { api } from "./api";
+import type { JoinRequestRow, MyJoinRequestRow } from "../types/joinRequest";
 
-export type JoinRequestRow = {
-  id: number;
-  teamId: number;
-  teamName: string;
-  userId: number;
-  userEmail: string;
-};
-
-export type MyJoinRequestRow = {
-  id: number;
-  teamId: number;
-  teamName: string;
-};
+export type { JoinRequestRow, MyJoinRequestRow };
 
 export const getJoinRequests = async () => {
   const response = await api.get<JoinRequestRow[]>("/join-requests");

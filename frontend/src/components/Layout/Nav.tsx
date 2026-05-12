@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { logout } from "../service/auth";
+import { toast } from "react-hot-toast";
+import { useAuth } from "../../context/AuthContext";
+import { logout } from "../../services/auth";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   [
@@ -20,9 +21,10 @@ const Nav = () => {
   const handleSignOut = async () => {
     try {
       await logout();
+      toast.success("Signed out.");
       navigate("/");
-    } catch (err) {
-      console.error(err);
+    } catch {
+      toast.error("Could not sign out cleanly. Session has been cleared locally.");
     } finally {
       setSession?.(null);
     }

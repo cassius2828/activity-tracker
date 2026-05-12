@@ -1,24 +1,32 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
-import { createTeam, getTeams, type Team, type TeamRole } from "../service/teams";
-import {
-  ChooseTeamSection,
-  CreateTeamSection,
-  TeamNotice,
-  TeamsHeader,
-  type TeamForm,
-} from "../components/TeamsSections";
+import { createTeam, getTeams } from "../services/teams";
+import type { Team, TeamForm, TeamRole } from "../types/team";
+import ChooseTeamSection from "../components/Teams/ChooseTeamSection";
+import CreateTeamSection from "../components/Teams/CreateTeamSection";
+import TeamsHeader from "../components/Teams/TeamsHeader";
 import { useAppContext } from "../context/AppContext";
+import PageShell from "../components/Ui/PageShell";
 
 const Teams = () => {
   const navigate = useNavigate();
   const { session } = useAuth();
-  const { teams, setTeams, selectedTeamId, setSelectedTeamId, isLoadingTeams, setIsLoadingTeams } = useAppContext();
-  const [notice, setNotice] = useState<string | null>(null);
+  const {
+    teams,
+    setTeams,
+    selectedTeamId,
+    setSelectedTeamId,
+    isLoadingTeams,
+    setIsLoadingTeams,
+  } = useAppContext();
   const [isChoosing] = useState<boolean>(false);
   const [isCreating, setIsCreating] = useState<boolean>(false);
-  const [teamForm, setTeamForm] = useState<TeamForm>({ name: "", description: "" });
+  const [teamForm, setTeamForm] = useState<TeamForm>({
+    name: "",
+    description: "",
+  });
 
   const actor = useMemo(
     () => ({
@@ -32,7 +40,6 @@ const Teams = () => {
   const handleChooseTeam = (teamId: string) => {
     if (!teamId) return;
     navigate(`/tasks/team/${teamId}`);
-
   };
 
   const myTeamId = session?.teamId ?? null;
@@ -47,11 +54,11 @@ const Teams = () => {
   const handleCreateTeam = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isAlreadyOnTeam) {
-      setNotice("You are already on a team. Leave it before creating a new one.");
+      toast.error("You are already on a team. Leave it before creating a new one.");
       return;
     }
     if (!teamForm.name.trim()) {
-      setNotice("Team name is required.");
+      toast.error("Team name is required.");
       return;
     }
     setIsCreating(true);
@@ -61,46 +68,47 @@ const Teams = () => {
         description: teamForm.description.trim() || "No description provided",
         creators: [{ id: actor.id, role: actor.role }],
       });
-      setTeams((previous: Team[]) =>
-        [createdTeam, ...previous.filter((team: Team) => team.id !== createdTeam.id)],
-      );
+      setTeams((previous: Team[]) => [
+        createdTeam,
+        ...previous.filter((team: Team) => team.id !== createdTeam.id),
+      ]);
       setSelectedTeamId(createdTeam.id);
-
       setTeamForm({ name: "", description: "" });
-      setNotice("Team created successfully.");
-    } catch (err) {
-      console.error(err);
-      setNotice("Failed to create team.");
+      toast.success("Team created successfully.");
+    } catch {
+      toast.error("Failed to create team.");
     } finally {
       setIsCreating(false);
     }
   };
 
   useEffect(() => {
+    const controller = new AbortController();
     const loadTeams = async () => {
       setIsLoadingTeams(true);
       try {
         const fetchedTeams = await getTeams();
+        if (controller.signal.aborted) return;
         setTeams(fetchedTeams);
         setSelectedTeamId(fetchedTeams[0]?.id ?? "");
-        setNotice(null);
-      } catch (err) {
-        console.error(err);
-        setNotice("Failed to load teams.");
+      } catch {
+        if (controller.signal.aborted) return;
+        toast.error("Failed to load teams.");
       } finally {
-        setIsLoadingTeams(false);
+        if (!controller.signal.aborted) setIsLoadingTeams(false);
       }
     };
 
     void loadTeams();
+    return () => controller.abort();
+    // setTeams / setSelectedTeamId / setIsLoadingTeams from useState are
+    // stable; including them here would re-run the effect every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-
-
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8 text-left sm:px-6 sm:py-10">
+    <PageShell>
       <TeamsHeader />
-      <TeamNotice notice={notice} />
       <ChooseTeamSection
         teams={teams}
         selectedTeamId={selectedTeamId}
@@ -123,7 +131,7 @@ const Teams = () => {
         onGoToSelectedTeam={() => navigate(`/tasks/team/${selectedTeamId}`)}
         isAlreadyOnTeam={isAlreadyOnTeam}
       />
-    </div>
+    </PageShell>
   );
 };
 

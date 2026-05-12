@@ -2,11 +2,15 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { getSession } from "../service/auth";
+import { useNavigate } from "react-router-dom";
+import { getSession } from "../services/auth";
+import { AUTH_EXPIRED_EVENT } from "../services/api";
 
 export type AuthSession = {
   userId: string;
@@ -17,6 +21,7 @@ export type AuthSession = {
 
 type AuthContextValue = {
   session: AuthSession | null;
+  isAuthLoading: boolean;
   setSession: (session: AuthSession | null) => void;
   refreshSession: () => Promise<AuthSession | null>;
 };
@@ -38,13 +43,22 @@ const loadStoredSession = (): AuthSession | null => {
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [session, setSessionState] = useState<AuthSession | null>(() => loadStoredSession());
+  const [session, setSessionState] = useState<AuthSession | null>(() =>
+    loadStoredSession(),
+  );
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+  const navigate = useNavigate();
+  /** Guards the auth:expired handler so we redirect at most once per logout. */
+  const isExpiringRef = useRef(false);
 
   const setSession = useCallback((nextSession: AuthSession | null) => {
     setSessionState(nextSession);
     if (typeof window === "undefined") return;
     if (nextSession) {
-      window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
+      window.localStorage.setItem(
+        SESSION_STORAGE_KEY,
+        JSON.stringify(nextSession),
+      );
       return;
     }
     window.localStorage.removeItem(SESSION_STORAGE_KEY);
@@ -63,22 +77,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
       setSession(next);
       return next;
-    } catch (err) {
-      console.error(err);
+    } catch {
       // 401 (or any failure) means the cached session is no longer valid.
+      // Errors are already logged centrally by the api interceptor.
       setSession(null);
       return null;
     }
   }, [setSession]);
 
+  // Validate the cached session against the server on mount. Prevents
+  // localStorage tampering from rendering admin UI to non-admin users.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      await refreshSession();
+      if (!cancelled) setIsAuthLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshSession]);
+
+  // Single source of truth for "the server says you're no longer logged in".
+  // Triggered by the api 401 interceptor.
+  useEffect(() => {
+    const handleExpired = () => {
+      if (isExpiringRef.current) return;
+      isExpiringRef.current = true;
+      setSession(null);
+      navigate("/auth?mode=login", { replace: true });
+      // Allow future expirations to fire after this one is handled.
+      window.setTimeout(() => {
+        isExpiringRef.current = false;
+      }, 0);
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleExpired);
+  }, [navigate, setSession]);
+
   const value = useMemo(
-    () => ({ session, setSession, refreshSession }),
-    [session, setSession, refreshSession],
+    () => ({ session, isAuthLoading, setSession, refreshSession }),
+    [session, isAuthLoading, setSession, refreshSession],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components -- co-located hook keeps consumers' import paths short
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

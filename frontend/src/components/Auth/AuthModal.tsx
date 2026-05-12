@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { login, register } from "../../service/auth";
+import { toast } from "react-hot-toast";
+import { isAxiosError } from "axios";
+import { login, register } from "../../services/auth";
 import LoginForm from "./LoginForm";
 import SignupForm from "./SignupForm";
 import {
@@ -48,9 +50,19 @@ const AuthModal = () => {
         role: response.user.role,
         teamId: response.user.teamId === null ? null : String(response.user.teamId),
       });
-      navigate("/teams");
+      toast.success(isLogin ? "Signed in." : "Account created.");
+      const next = searchParams.get("next");
+      navigate(next ? decodeURIComponent(next) : "/teams", { replace: true });
     } catch (err) {
-      console.error(err);
+      const serverMessage = isAxiosError(err)
+        ? (err.response?.data as { message?: string } | undefined)?.message
+        : null;
+      toast.error(
+        serverMessage ??
+          (isLogin
+            ? "Could not sign in. Check your email and password."
+            : "Could not create your account."),
+      );
     } finally {
       setIsLoading(false);
     }

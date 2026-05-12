@@ -1,53 +1,17 @@
-import type {
-  Task,
-  TaskCategory,
-  TaskPriority,
-  TaskStatus,
-} from "../service/tasks";
-
-const priorityLabel: Record<TaskPriority, string> = {
-  none: "None",
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-};
-
-const priorityStyles: Record<TaskPriority, string> = {
-  none: "bg-[var(--border)] text-[var(--text-h)]",
-  low: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200",
-  medium: "bg-amber-500/15 text-amber-900 dark:text-amber-100",
-  high: "bg-rose-500/15 text-rose-900 dark:text-rose-100",
-};
-
-const categoryLabel: Record<TaskCategory, string> = {
-  work: "Work",
-  personal: "Personal",
-  other: "Other",
-};
-
-const statusLabel: Record<TaskStatus, string> = {
-  pending: "Pending",
-  in_progress: "In progress",
-  completed: "Completed",
-};
-
-const statusStyles: Record<TaskStatus, string> = {
-  pending: "bg-[var(--border)] text-[var(--text-h)]",
-  in_progress: "bg-sky-500/15 text-sky-900 dark:text-sky-100",
-  completed: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200",
-};
-
-const formatDueDate = (iso: string): string => {
-  if (!iso) return "No due date";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleDateString(undefined, {
-    weekday: "short",
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-};
+import type { Task } from "../../types/task";
+import {
+  categoryLabel,
+  priorityLabel,
+  priorityStyles,
+  statusLabel,
+  statusStyles,
+} from "../../constants/tasks";
+import { formatDueDate } from "../../utils/date";
+import {
+  dangerBtnClass,
+  eyebrowClass,
+  primaryBtnClass,
+} from "../../styles/classNames";
 
 type TaskDetailsCardProps = {
   task: Task;
@@ -72,9 +36,7 @@ const TaskDetailsCard = ({
     <article className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)] shadow-[var(--shadow)]">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--border)] px-6 py-5">
         <div className="min-w-0 flex-1 space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
-            Task #{task.id}
-          </p>
+          <p className={eyebrowClass}>Task #{task.id}</p>
           <h1 className="!m-0 !text-2xl !tracking-tight text-[var(--text-h)] sm:!text-3xl">
             {task.title}
           </h1>
@@ -98,11 +60,7 @@ const TaskDetailsCard = ({
         {(canEdit || canDelete) && (
           <div className="flex shrink-0 items-center gap-2">
             {canEdit && (
-              <button
-                type="button"
-                onClick={onEdit}
-                className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[14px] font-semibold text-white transition hover:brightness-110"
-              >
+              <button type="button" onClick={onEdit} className={primaryBtnClass}>
                 Edit task
               </button>
             )}
@@ -111,7 +69,7 @@ const TaskDetailsCard = ({
                 type="button"
                 onClick={onDelete}
                 disabled={isDeleting}
-                className="rounded-xl border border-rose-400/40 bg-rose-500/10 px-4 py-2 text-[14px] font-medium text-rose-800 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:text-rose-100"
+                className={dangerBtnClass}
               >
                 {isDeleting ? "Deleting..." : "Delete"}
               </button>
