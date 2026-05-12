@@ -28,20 +28,19 @@ export type TaskInput = {
 
 type TaskLike = Partial<Omit<Task, "teamId">> & {
   teamId?: string | number | null;
-  tasks?: Partial<Task>;
 };
 
-const normalizeTask = (taskLike: TaskLike): Task | null => {
-  const source = taskLike.tasks ?? taskLike;
+const normalizeTask = (source: TaskLike): Task | null => {
   if (!source.id || !source.title || !source.description || !source.userId) {
     return null;
   }
-  const rawTeamId = (source as { teamId?: string | number | null }).teamId;
   return {
     id: String(source.id),
     userId: String(source.userId),
     teamId:
-      rawTeamId === undefined || rawTeamId === null ? null : String(rawTeamId),
+      source.teamId === undefined || source.teamId === null
+        ? null
+        : String(source.teamId),
     title: source.title,
     description: source.description,
     dueDate: source.dueDate ? String(source.dueDate) : "",

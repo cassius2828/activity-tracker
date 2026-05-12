@@ -7,11 +7,11 @@ import {
   leaveTeam,
   joinTeam,
 } from "../controllers/teams";
-import { isAdmin } from "../middleware";
+import { isAdmin, isSignedIn } from "../middleware";
 
 const router = express.Router();
 
-router.post("/", createTeam);
+router.post("/", isSignedIn, createTeam);
 router.get("/", getTeams);
 router.get("/user/:userId", getTeamByUserId);
 router.put("/:teamId/join", isAdmin, joinTeam);

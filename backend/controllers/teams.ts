@@ -16,6 +16,36 @@ export const createTeam = async (req: Request, res: Response) => {
         .json({ message: "name and description are required" });
     }
 
+    // One-team-per-user invariant: the signed-in requester (and any other
+    // proposed creators) must not already belong to a team.
+    if (req.user?.teamId != null) {
+      return res
+        .status(409)
+        .json({ message: "You are already on a team. Leave it before creating a new one." });
+    }
+
+    if (creators && creators.length > 0) {
+      const creatorIds = creators
+        .map((creator) => parseInt(creator.id))
+        .filter((id) => !Number.isNaN(id));
+
+      if (creatorIds.length > 0) {
+        const existingCreators = await db
+          .select({ id: users.id, teamId: users.teamId, email: users.email })
+          .from(users)
+          .where(inArray(users.id, creatorIds));
+
+        const alreadyOnTeam = existingCreators.find(
+          (creator) => creator.teamId !== null,
+        );
+        if (alreadyOnTeam) {
+          return res.status(409).json({
+            message: `${alreadyOnTeam.email} is already on a team and cannot create a new one.`,
+          });
+        }
+      }
+    }
+
     const [newTeam] = await db
       .insert(teams)
       .values({ name, description })

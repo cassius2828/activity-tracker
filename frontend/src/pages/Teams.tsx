@@ -35,8 +35,21 @@ const Teams = () => {
 
   };
 
+  const myTeamId = session?.teamId ?? null;
+
+  const handleOpenMyTeam = () => {
+    if (!myTeamId) return;
+    navigate(`/tasks/team/${myTeamId}`);
+  };
+
+  const isAlreadyOnTeam = Boolean(session?.teamId);
+
   const handleCreateTeam = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isAlreadyOnTeam) {
+      setNotice("You are already on a team. Leave it before creating a new one.");
+      return;
+    }
     if (!teamForm.name.trim()) {
       setNotice("Team name is required.");
       return;
@@ -95,6 +108,8 @@ const Teams = () => {
         isLoadingTeams={isLoadingTeams}
         isChoosing={isChoosing}
         onOpenTeam={(teamId) => void handleChooseTeam(teamId)}
+        myTeamId={myTeamId}
+        onOpenMyTeam={handleOpenMyTeam}
       />
       <CreateTeamSection
         teamForm={teamForm}
@@ -106,6 +121,7 @@ const Teams = () => {
           setTeamForm((previous) => ({ ...previous, description }))
         }
         onGoToSelectedTeam={() => navigate(`/tasks/team/${selectedTeamId}`)}
+        isAlreadyOnTeam={isAlreadyOnTeam}
       />
     </div>
   );

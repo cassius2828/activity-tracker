@@ -1,9 +1,28 @@
 import type { Request, Response } from "express";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "../config/db";
 import { tasks as tasksTable } from "../config/schema";
 import type { NewTask } from "../types";
 import { parseId } from "../utils";
+
+const DEFAULT_PAGE_LIMIT = 50;
+const MAX_PAGE_LIMIT = 200;
+
+const parsePagination = (req: Request) => {
+  const rawLimit = req.query.limit;
+  const rawOffset = req.query.offset;
+  const limit = (() => {
+    const n = Number(typeof rawLimit === "string" ? rawLimit : NaN);
+    if (!Number.isFinite(n) || n <= 0) return DEFAULT_PAGE_LIMIT;
+    return Math.min(Math.floor(n), MAX_PAGE_LIMIT);
+  })();
+  const offset = (() => {
+    const n = Number(typeof rawOffset === "string" ? rawOffset : NaN);
+    if (!Number.isFinite(n) || n < 0) return 0;
+    return Math.floor(n);
+  })();
+  return { limit, offset };
+};
 
 export const createTask = async (req: Request, res: Response) => {
   try {
@@ -42,10 +61,14 @@ export const getTasksByTeamId = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "Invalid team id" });
   }
   try {
+    const { limit, offset } = parsePagination(req);
     const tasks = await db
       .select()
       .from(tasksTable)
-      .where(eq(tasksTable.teamId, teamId));
+      .where(eq(tasksTable.teamId, teamId))
+      .orderBy(desc(tasksTable.updatedAt))
+      .limit(limit)
+      .offset(offset);
     res.status(200).json(tasks);
   } catch (err) {
     res.status(500).json({ message: "Internal server error" });
@@ -80,10 +103,14 @@ export const getTasksByUserId = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid user id" });
     }
 
+    const { limit, offset } = parsePagination(req);
     const tasks = await db
       .select()
       .from(tasksTable)
-      .where(eq(tasksTable.userId, userId));
+      .where(eq(tasksTable.userId, userId))
+      .orderBy(desc(tasksTable.updatedAt))
+      .limit(limit)
+      .offset(offset);
 
     res.status(200).json(tasks);
   } catch (err) {
@@ -106,7 +133,16 @@ export const updateTask = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    if (req.user!.id !== taskToUpdate.userId) {
+    // Anyone of these can edit:
+    //   - the task creator
+    //   - a teammate (same teamId, only if the task is on a team)
+    //   - an admin
+    const actor = req.user!;
+    const isOwner = actor.id === taskToUpdate.userId;
+    const isTeammate =
+      taskToUpdate.teamId !== null && actor.teamId === taskToUpdate.teamId;
+    const isAdmin = actor.role === "admin";
+    if (!isOwner && !isTeammate && !isAdmin) {
       return res
         .status(403)
         .json({ message: "Unauthorized to update this task" });

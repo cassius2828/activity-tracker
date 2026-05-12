@@ -74,6 +74,9 @@ const Tasks = () => {
   const currentUserId = session?.userId ?? userId ?? "";
   const isViewingTeamTasks = Boolean(teamId);
   const isMemberOfViewedTeam = Boolean(teamId && session?.teamId === teamId);
+  const isOnDifferentTeam = Boolean(
+    teamId && session?.teamId && session.teamId !== teamId,
+  );
   const isAdmin = session?.role === "admin";
   const hasPendingRequestForViewedTeam = useMemo(
     () =>
@@ -171,6 +174,12 @@ const Tasks = () => {
     if (!teamId) return;
     if (!currentUserId) {
       setTeamActionNotice("You must be signed in to request joining a team.");
+      return;
+    }
+    if (isOnDifferentTeam) {
+      setTeamActionNotice(
+        "You must leave your team before joining another team.",
+      );
       return;
     }
     if (hasPendingRequestForViewedTeam) return;
@@ -365,14 +374,20 @@ const Tasks = () => {
               <button
                 type="button"
                 onClick={() => void handleJoinRequest()}
-                disabled={isTeamActionLoading || hasPendingRequestForViewedTeam}
+                disabled={
+                  isTeamActionLoading ||
+                  hasPendingRequestForViewedTeam ||
+                  isOnDifferentTeam
+                }
                 className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[14px] font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {hasPendingRequestForViewedTeam
-                  ? "Requested to join team"
-                  : isTeamActionLoading
-                    ? "Submitting..."
-                    : "Request to join team"}
+                {isOnDifferentTeam
+                  ? "You must leave your team before joining another team"
+                  : hasPendingRequestForViewedTeam
+                    ? "Requested to join team"
+                    : isTeamActionLoading
+                      ? "Submitting..."
+                      : "Request to join team"}
               </button>
             )}
           </div>
