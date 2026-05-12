@@ -35,14 +35,14 @@ const Home = () => {
       <section className="mt-14 border-t border-[var(--border)] pt-12">
         <h2 className="!m-0 !text-xl !tracking-tight text-[var(--text-h)] sm:!text-2xl">What you can explore</h2>
         <p className="mt-2 text-[15px] text-[var(--text)]">
-          Each area uses placeholder data until your API is wired up.
+          Explore tasks, auth, and profile flows connected to your API routes.
         </p>
 
         <ul className="mt-8 grid gap-4 sm:grid-cols-3">
           <li className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5 shadow-sm">
             <h3 className="!m-0 !text-base font-semibold text-[var(--text-h)]">Tasks</h3>
             <p className="mt-2 text-[14px] leading-relaxed text-[var(--text)]">
-              Browse a sample list, search, and filter by priority—same shape as your backend enums.
+              Browse tasks, search, and filter by priority using your backend enum values.
             </p>
           </li>
           <li className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5 shadow-sm">
@@ -54,7 +54,7 @@ const Home = () => {
           <li className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5 shadow-sm sm:col-span-1">
             <h3 className="!m-0 !text-base font-semibold text-[var(--text-h)]">Profile</h3>
             <p className="mt-2 text-[14px] leading-relaxed text-[var(--text)]">
-              A profile card with dummy stats and activity—swap for real user data from JWT or `/api/users`.
+              View account details and recent activity from your user and task endpoints.
             </p>
           </li>
         </ul>

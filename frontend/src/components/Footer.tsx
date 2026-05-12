@@ -7,7 +7,7 @@ const Footer = () => {
             Activity tracker
           </p>
           <p className="mt-2 text-[14px] leading-relaxed text-[var(--text)]">
-            Learning project — tasks, auth, and profiles. Replace dummy data with your API when you are ready.
+            Learning project — tasks, auth, and profiles powered by your API.
           </p>
           <p className="mt-4 text-[12px] text-[var(--text)]/80">
             © {new Date().getFullYear()} · Built for practice

@@ -9,18 +9,16 @@ import {
   TeamsHeader,
   type TeamForm,
 } from "../components/TeamsSections";
+import { useAppContext } from "../context/AppContext";
 
 const Teams = () => {
   const navigate = useNavigate();
   const { session } = useAuth();
-
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [selectedTeamId, setSelectedTeamId] = useState("");
-  const [teamForm, setTeamForm] = useState<TeamForm>({ name: "", description: "" });
-  const [isLoadingTeams, setIsLoadingTeams] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
-  const [isChoosing, setIsChoosing] = useState(false);
+  const { teams, setTeams, selectedTeamId, setSelectedTeamId, isLoadingTeams, setIsLoadingTeams } = useAppContext();
   const [notice, setNotice] = useState<string | null>(null);
+  const [isChoosing, setIsChoosing] = useState<boolean>(false);
+  const [isCreating, setIsCreating] = useState<boolean>(false);
+  const [teamForm, setTeamForm] = useState<TeamForm>({ name: "", description: "" });
 
   const actor = useMemo(
     () => ({
@@ -30,27 +28,6 @@ const Teams = () => {
     }),
     [session?.email, session?.role, session?.userId],
   );
-
-  useEffect(() => {
-    const loadTeams = async () => {
-      setIsLoadingTeams(true);
-      try {
-        const fetchedTeams = await getTeams();
-        setTeams(fetchedTeams);
-        setSelectedTeamId(session?.teamId ?? fetchedTeams[0]?.id ?? "");
-        setNotice(null);
-        setIsLoadingTeams(false);
-      } catch (err) {
-        console.error(err);
-        setNotice("Failed to load teams.");
-      } finally {
-        setIsLoadingTeams(false);
-      }
-
-    };
-
-    void loadTeams();
-  }, [session?.teamId]);
 
   const handleChooseTeam = async (teamId: string) => {
     if (!teamId) return;
@@ -67,6 +44,7 @@ const Teams = () => {
     } catch (err) {
       console.error(err);
       setNotice("Failed to select team.");
+    } finally {
       setIsChoosing(false);
     }
   };
@@ -84,8 +62,8 @@ const Teams = () => {
         description: teamForm.description.trim() || "No description provided",
         creator: actor,
       });
-      setTeams((previous) =>
-        [createdTeam, ...previous.filter((team) => team.id !== createdTeam.id)],
+      setTeams((previous: Team[]) =>
+        [createdTeam, ...previous.filter((team: Team) => team.id !== createdTeam.id)],
       );
       setSelectedTeamId(createdTeam.id);
 
@@ -97,9 +75,28 @@ const Teams = () => {
     } finally {
       setIsCreating(false);
     }
-
-
   };
+
+  useEffect(() => {
+    const loadTeams = async () => {
+      setIsLoadingTeams(true);
+      try {
+        const fetchedTeams = await getTeams();
+        setTeams(fetchedTeams);
+        setSelectedTeamId(session?.teamId ?? fetchedTeams[0]?.id ?? "");
+        setNotice(null);
+      } catch (err) {
+        console.error(err);
+        setNotice("Failed to load teams.");
+      } finally {
+        setIsLoadingTeams(false);
+      }
+    };
+
+    void loadTeams();
+  }, [session?.teamId, setIsLoadingTeams, setSelectedTeamId, setTeams]);
+
+
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 text-left sm:px-6 sm:py-10">

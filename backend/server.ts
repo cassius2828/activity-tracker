@@ -8,6 +8,7 @@ import { sql } from "drizzle-orm";
 import { rateLimit } from "express-rate-limit";
 import authRouter from "./routes/auth";
 import taskRouter from "./routes/tasks";
+import teamsRouter from "./routes/teams";
 import cookieParser from "cookie-parser";
 import db from "./config/db";
 
@@ -38,7 +39,7 @@ app.use(express.json());
 // Routers
 app.use("/api/tasks", taskRouter);
 app.use("/api/auth", authRouter);
-
+app.use("/api/teams", teamsRouter);
 const logDatabaseConnectionStatus = async () => {
   try {
     await db.execute(sql`select 1`);

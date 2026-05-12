@@ -18,27 +18,6 @@ export type Team = {
   updatedAt: string;
 };
 
-type JoinRequest = {
-  id: string;
-  teamId: string;
-  userId: string;
-  status: "pending";
-  createdAt: string;
-};
-
-const LEGACY_MOCK_KEYS = [
-  "activity-tracker.mock.teams.v1",
-  "activity-tracker.mock.users.v1",
-  "activity-tracker.mock.join-requests.v1",
-];
-
-const clearLegacyMockData = () => {
-  if (typeof window === "undefined") return;
-  LEGACY_MOCK_KEYS.forEach((key) => window.localStorage.removeItem(key));
-};
-
-clearLegacyMockData();
-
 export const getTeams = async () => {
   const response = await api.get<Team[]>("/teams");
   return response.data;
