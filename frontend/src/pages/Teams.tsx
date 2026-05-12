@@ -16,7 +16,7 @@ const Teams = () => {
   const { session } = useAuth();
   const { teams, setTeams, selectedTeamId, setSelectedTeamId, isLoadingTeams, setIsLoadingTeams } = useAppContext();
   const [notice, setNotice] = useState<string | null>(null);
-  const [isChoosing, setIsChoosing] = useState<boolean>(false);
+  const [isChoosing] = useState<boolean>(false);
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [teamForm, setTeamForm] = useState<TeamForm>({ name: "", description: "" });
 
@@ -46,7 +46,7 @@ const Teams = () => {
       const createdTeam = await createTeam({
         name: teamForm.name.trim(),
         description: teamForm.description.trim() || "No description provided",
-        creator: actor,
+        creators: [{ id: actor.id, role: actor.role }],
       });
       setTeams((previous: Team[]) =>
         [createdTeam, ...previous.filter((team: Team) => team.id !== createdTeam.id)],

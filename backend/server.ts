@@ -9,6 +9,8 @@ import { rateLimit } from "express-rate-limit";
 import authRouter from "./routes/auth";
 import taskRouter from "./routes/tasks";
 import teamsRouter from "./routes/teams";
+import usersRouter from "./routes/users";
+import joinRequestsRouter from "./routes/joinRequests";
 import cookieParser from "cookie-parser";
 import db from "./config/db";
 
@@ -40,6 +42,8 @@ app.use(express.json());
 app.use("/api/tasks", taskRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/teams", teamsRouter);
+app.use("/api/users", usersRouter);
+app.use("/api/join-requests", joinRequestsRouter);
 const logDatabaseConnectionStatus = async () => {
   try {
     await db.execute(sql`select 1`);

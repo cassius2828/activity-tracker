@@ -8,6 +8,7 @@ import Nav from './components/Nav'
 import Footer from './components/Footer'
 import TaskDetails from './pages/TaskDetails'
 import Teams from "./pages/Teams.tsx";
+import Admin from "./pages/Admin.tsx";
 function App() {
   return (
     <>
@@ -16,6 +17,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="/teams" element={<Teams />} />
           <Route path="/tasks" element={<Navigate to="/teams" replace />} />
           <Route path="/tasks/team/:teamId" element={<Tasks />} />

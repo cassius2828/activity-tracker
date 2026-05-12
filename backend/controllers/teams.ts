@@ -1,7 +1,7 @@
 import { db } from "../config/db";
-import { joinRequests, teams, users } from "../config/schema";
+import { teams, users } from "../config/schema";
 import { Request, Response } from "express";
-import { inArray, eq, and } from "drizzle-orm";
+import { inArray, eq } from "drizzle-orm";
 
 export const createTeam = async (req: Request, res: Response) => {
   try {
@@ -123,59 +123,6 @@ export const leaveTeam = async (req: Request, res: Response) => {
   }
 };
 
-export const requestJoinTeam = async (req: Request, res: Response) => {
-  try {
-    const { teamId } = req.params as { teamId: string };
-    const { userId } = req.body as { userId: string };
-    if (!teamId || !userId) {
-      return res
-        .status(400)
-        .json({ message: "teamId and userId are required" });
-    }
-    const parsedTeamId = parseInt(teamId);
-    const parsedUserId = parseInt(userId);
-    const [existingJoinRequest] = await db
-      .select({ id: joinRequests.id })
-      .from(joinRequests)
-      .where(
-        and(
-          eq(joinRequests.teamId, parsedTeamId),
-          eq(joinRequests.userId, parsedUserId),
-        ),
-      );
-    if (existingJoinRequest) {
-      return res.status(400).json({ message: "Join request already exists" });
-    }
-    await db
-      .insert(joinRequests)
-      .values({ teamId: parsedTeamId, userId: parsedUserId });
-    return res
-      .status(200)
-      .json({ message: `Join request sent to team ${parsedTeamId}!` });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-export const approveJoinRequest = async (req: Request, res: Response) => {
-  try {
-    const { joinRequestId } = req.params as { joinRequestId: string };
-    const { userId } = req.body as { userId: string };
-
-    if (!joinRequestId || !userId) {
-      return res
-        .status(400)
-        .json({ message: "joinRequestId and userId are required" });
-    }
-    // ensure user is added to team
-    // delete join request from join request table
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
-
 export const joinTeam = async (req: Request, res: Response) => {
   try {
     const { teamId } = req.params as { teamId: string };
@@ -197,8 +144,6 @@ export const joinTeam = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "User not found" });
     }
 
-    await db.delete(joinRequests).where(eq(joinRequests.teamId, parsedTeamId));
-    
     return res
       .status(200)
       .json({

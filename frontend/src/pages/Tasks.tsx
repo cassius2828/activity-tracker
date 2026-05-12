@@ -6,10 +6,10 @@ import {
   assignUserToTeam,
   getTeamById,
   leaveTeam,
-  requestJoinTeam,
   searchUsers,
   type TeamUser,
 } from "../service/teams";
+import { requestJoinTeam } from "../service/joinRequests";
 
 type Priority = "none" | "low" | "medium" | "high";
 
@@ -154,15 +154,20 @@ const Tasks = () => {
   const handleAssignUser = async (targetUserId: string) => {
     if (!teamId) return;
     setAssigningUserId(targetUserId);
+    const targetUser = searchResults.find((user) => user.id === targetUserId);
     try {
-      const updatedUser = await assignUserToTeam({
+      await assignUserToTeam({
         teamId,
         userId: targetUserId,
       });
       setSearchResults((previous) =>
         previous.map((user) => (user.id === targetUserId ? { ...user, teamId } : user)),
       );
-      setTeamActionNotice(`Assigned ${updatedUser.email} to the team.`);
+      setTeamActionNotice(
+        targetUser
+          ? `Assigned ${targetUser.email} to the team.`
+          : "Assigned user to the team.",
+      );
     } catch (err) {
       console.error(err);
       setTeamActionNotice("Could not assign user to team.");

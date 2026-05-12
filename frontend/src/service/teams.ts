@@ -62,22 +62,6 @@ export const leaveTeam = async ({
   return response.data;
 };
 
-export const requestJoinTeam = async ({
-  teamId,
-  userId,
-}: {
-  teamId: string;
-  userId: string;
-}) => {
-  const response = await api.post<{ message: string }>(
-    `/teams/${teamId}/join-requests`,
-    {
-      userId,
-    },
-  );
-  return response.data;
-};
-
 export const searchUsers = async (query: string) => {
   const response = await api.get<TeamUser[]>("/users", {
     params: { q: query },
@@ -92,7 +76,7 @@ export const assignUserToTeam = async ({
   teamId: string;
   userId: string;
 }) => {
-  const response = await api.post<TeamUser>(`/teams/${teamId}/members`, {
+  const response = await api.put<{ message: string }>(`/teams/${teamId}/join`, {
     userId,
   });
   return response.data;

@@ -14,7 +14,6 @@ const Nav = () => {
   const auth = useAuth();
   const session = auth?.session;
   const setSession = auth?.setSession;
-
   const userId = session?.userId ?? "";
 
   const handleSignOut = async () => {
@@ -66,6 +65,13 @@ const Nav = () => {
                   Profile
                 </NavLink>
               </li>
+              {session.role === "admin" && (
+                <li>
+                  <NavLink to="/admin" className={navLinkClass}>
+                    Admin
+                  </NavLink>
+                </li>
+              )}
               <li>
                 <button
                   type="button"
