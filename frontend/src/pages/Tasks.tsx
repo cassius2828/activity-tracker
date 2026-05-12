@@ -49,7 +49,7 @@ const Tasks = () => {
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
   const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
 
-  const currentUserId = session?.userId ?? userId ?? "1";
+  const currentUserId = session?.userId ?? userId ?? "";
   const isViewingTeamTasks = Boolean(teamId);
   const isMemberOfViewedTeam = Boolean(teamId && session?.teamId === teamId);
   const isAdmin = session?.role === "admin";
@@ -70,10 +70,13 @@ const Tasks = () => {
     if (!teamId) return;
 
     const loadTeam = async () => {
-      const result = await getTeamById(teamId);
-      setTeamName(result.data?.name ?? null);
-      if (result.source === "local") {
-        setTeamActionNotice("Using local fallback for team actions and membership.");
+      try {
+        const team = await getTeamById(teamId);
+        setTeamName(team?.name ?? null);
+      } catch (err) {
+        console.error(err);
+        setTeamName(null);
+        setTeamActionNotice("Could not load team details.");
       }
     };
 
@@ -100,35 +103,50 @@ const Tasks = () => {
 
   const handleLeaveTeam = async () => {
     if (!teamId) return;
-    setIsTeamActionLoading(true);
-    const result = await leaveTeam({ teamId, userId: currentUserId });
-    if (session?.userId === currentUserId) {
-      setSession({ ...session, teamId: null });
+    if (!currentUserId) {
+      setTeamActionNotice("You must be signed in to leave a team.");
+      return;
     }
-    setTeamActionNotice(
-      result.source === "local" ? "You left the team (local fallback mode)." : result.data.message,
-    );
+    setIsTeamActionLoading(true);
+    try {
+      const result = await leaveTeam({ teamId, userId: currentUserId });
+      if (session?.userId === currentUserId) {
+        setSession({ ...session, teamId: null });
+      }
+      setTeamActionNotice(result.message);
+    } catch (err) {
+      console.error(err);
+      setTeamActionNotice("Could not leave team.");
+    }
     setIsTeamActionLoading(false);
   };
 
   const handleJoinRequest = async () => {
     if (!teamId) return;
+    if (!currentUserId) {
+      setTeamActionNotice("You must be signed in to request joining a team.");
+      return;
+    }
     setIsTeamActionLoading(true);
-    const result = await requestJoinTeam({ teamId, userId: currentUserId });
-    setTeamActionNotice(
-      result.source === "local"
-        ? "Join request submitted (local fallback mode)."
-        : result.data.message,
-    );
+    try {
+      const result = await requestJoinTeam({ teamId, userId: currentUserId });
+      setTeamActionNotice(result.message);
+    } catch (err) {
+      console.error(err);
+      setTeamActionNotice("Could not submit join request.");
+    }
     setIsTeamActionLoading(false);
   };
 
   const handleSearchUsers = async () => {
     setIsSearchingUsers(true);
-    const result = await searchUsers(searchQuery);
-    setSearchResults(result.data);
-    if (result.source === "local") {
-      setTeamActionNotice("User search is using local fallback data.");
+    try {
+      const users = await searchUsers(searchQuery);
+      setSearchResults(users);
+    } catch (err) {
+      console.error(err);
+      setSearchResults([]);
+      setTeamActionNotice("Could not search users.");
     }
     setIsSearchingUsers(false);
   };
@@ -136,18 +154,19 @@ const Tasks = () => {
   const handleAssignUser = async (targetUserId: string) => {
     if (!teamId) return;
     setAssigningUserId(targetUserId);
-    const result = await assignUserToTeam({
-      teamId,
-      userId: targetUserId,
-    });
-    setSearchResults((previous) =>
-      previous.map((user) => (user.id === targetUserId ? { ...user, teamId } : user)),
-    );
-    setTeamActionNotice(
-      result.source === "local"
-        ? `Assigned ${result.data.email} in local fallback mode.`
-        : `Assigned ${result.data.email} to the team.`,
-    );
+    try {
+      const updatedUser = await assignUserToTeam({
+        teamId,
+        userId: targetUserId,
+      });
+      setSearchResults((previous) =>
+        previous.map((user) => (user.id === targetUserId ? { ...user, teamId } : user)),
+      );
+      setTeamActionNotice(`Assigned ${updatedUser.email} to the team.`);
+    } catch (err) {
+      console.error(err);
+      setTeamActionNotice("Could not assign user to team.");
+    }
     setAssigningUserId(null);
   };
 

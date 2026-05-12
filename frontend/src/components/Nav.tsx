@@ -15,7 +15,7 @@ const Nav = () => {
   const session = auth?.session;
   const setSession = auth?.setSession;
 
-  const userId = session?.userId ?? "1";
+  const userId = session?.userId ?? "";
 
   const handleSignOut = async () => {
     try {
@@ -52,7 +52,7 @@ const Nav = () => {
                 </NavLink>
               </li>
               <li>
-                <NavLink to={`/tasks/user/${userId}`} className={navLinkClass}>
+                <NavLink to={userId ? `/tasks/user/${userId}` : "/"} className={navLinkClass}>
                   Tasks
                 </NavLink>
               </li>
@@ -62,7 +62,7 @@ const Nav = () => {
                 </NavLink>
               </li>
               <li>
-                <NavLink to={`/profile/${userId}`} className={navLinkClass}>
+                <NavLink to={userId ? `/profile/${userId}` : "/"} className={navLinkClass}>
                   Profile
                 </NavLink>
               </li>

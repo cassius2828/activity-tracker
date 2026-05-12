@@ -24,9 +24,9 @@ const Teams = () => {
 
   const actor = useMemo(
     () => ({
-      id: session?.userId ?? "1",
-      email: session?.email ?? "admin@activity.dev",
-      role: (session?.role ?? "admin") as TeamRole,
+      id: session?.userId ?? "",
+      email: session?.email ?? "",
+      role: (session?.role ?? "user") as TeamRole,
     }),
     [session?.email, session?.role, session?.userId],
   );
@@ -35,13 +35,10 @@ const Teams = () => {
     const loadTeams = async () => {
       setIsLoadingTeams(true);
       try {
-        const result = await getTeams();
-        setTeams(result.data);
-        setNotice(
-          result.source === "local"
-            ? "Using local fallback data because team endpoints are unavailable."
-            : null,
-        );
+        const fetchedTeams = await getTeams();
+        setTeams(fetchedTeams);
+        setSelectedTeamId(session?.teamId ?? fetchedTeams[0]?.id ?? "");
+        setNotice(null);
         setIsLoadingTeams(false);
       } catch (err) {
         console.error(err);
@@ -53,21 +50,25 @@ const Teams = () => {
     };
 
     void loadTeams();
-  }, []);
+  }, [session?.teamId]);
 
   const handleChooseTeam = async (teamId: string) => {
     if (!teamId) return;
+    if (!actor.id) {
+      setNotice("You must be signed in to choose a team.");
+      return;
+    }
     setIsChoosing(true);
-    const result = await chooseTeam({ teamId, user: actor });
-
-
-    setNotice(
-      result.source === "local"
-        ? "Selected team in local development mode."
-        : "Team selected successfully.",
-    );
-    setIsChoosing(false);
-    navigate(`/tasks/team/${teamId}`);
+    try {
+      await chooseTeam({ teamId, user: actor });
+      setNotice("Team selected successfully.");
+      setIsChoosing(false);
+      navigate(`/tasks/team/${teamId}`);
+    } catch (err) {
+      console.error(err);
+      setNotice("Failed to select team.");
+      setIsChoosing(false);
+    }
   };
 
   const handleCreateTeam = async (event: FormEvent<HTMLFormElement>) => {
@@ -78,20 +79,18 @@ const Teams = () => {
     }
     setIsCreating(true);
     try {
-      const result = await createTeam({
+      const createdTeam = await createTeam({
         name: teamForm.name.trim(),
         description: teamForm.description.trim() || "No description provided",
         creator: actor,
       });
-      setTeams((previous) => [result.data, ...previous.filter((team) => team.id !== result.data.id)]);
-      setSelectedTeamId(result.data.id);
+      setTeams((previous) =>
+        [createdTeam, ...previous.filter((team) => team.id !== createdTeam.id)],
+      );
+      setSelectedTeamId(createdTeam.id);
 
       setTeamForm({ name: "", description: "" });
-      setNotice(
-        result.source === "local"
-          ? "Team created with local fallback data."
-          : "Team created successfully.",
-      );
+      setNotice("Team created successfully.");
     } catch (err) {
       console.error(err);
       setNotice("Failed to create team.");
