@@ -6,6 +6,7 @@ import type {
   TaskPriority,
   TaskStatus,
 } from "../service/tasks";
+import Select from "./Select";
 
 const inputClass =
   "w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-2.5 text-[15px] text-[var(--text-h)] shadow-sm outline-none transition " +
@@ -235,9 +236,8 @@ const TaskFormModal = ({
               <label htmlFor="task-form-priority" className={labelClass}>
                 Priority
               </label>
-              <select
+              <Select
                 id="task-form-priority"
-                className={inputClass}
                 value={form.priority}
                 onChange={(event) =>
                   updateField("priority", event.target.value as TaskPriority)
@@ -247,15 +247,14 @@ const TaskFormModal = ({
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
-              </select>
+              </Select>
             </div>
             <div>
               <label htmlFor="task-form-category" className={labelClass}>
                 Category
               </label>
-              <select
+              <Select
                 id="task-form-category"
-                className={inputClass}
                 value={form.category}
                 onChange={(event) =>
                   updateField("category", event.target.value as TaskCategory)
@@ -264,15 +263,14 @@ const TaskFormModal = ({
                 <option value="work">Work</option>
                 <option value="personal">Personal</option>
                 <option value="other">Other</option>
-              </select>
+              </Select>
             </div>
             <div>
               <label htmlFor="task-form-status" className={labelClass}>
                 Status
               </label>
-              <select
+              <Select
                 id="task-form-status"
-                className={inputClass}
                 value={form.status}
                 onChange={(event) =>
                   updateField("status", event.target.value as TaskStatus)
@@ -281,7 +279,7 @@ const TaskFormModal = ({
                 <option value="pending">Pending</option>
                 <option value="in_progress">In progress</option>
                 <option value="completed">Completed</option>
-              </select>
+              </Select>
             </div>
           </div>
 

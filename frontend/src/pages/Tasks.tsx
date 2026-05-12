@@ -10,6 +10,7 @@ import {
   type TaskInput,
 } from "../service/tasks";
 import TaskFormModal from "../components/TaskFormModal";
+import Select from "../components/Select";
 import {
   assignUserToTeam,
   getTeamById,
@@ -489,18 +490,17 @@ const Tasks = () => {
           <label htmlFor="task-priority" className="mb-1.5 block text-[13px] font-medium text-[var(--text-h)]">
             Priority
           </label>
-          <select
+          <Select
             id="task-priority"
             value={priority}
             onChange={(e) => setPriority(e.target.value as "all" | Priority)}
-            className={inputClass}
           >
             <option value="all">All</option>
             <option value="none">None</option>
             <option value="low">Low</option>
             <option value="medium">Medium</option>
             <option value="high">High</option>
-          </select>
+          </Select>
         </div>
         <button
           type="button"

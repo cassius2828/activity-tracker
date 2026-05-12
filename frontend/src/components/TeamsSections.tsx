@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
 import type { Team } from "../service/teams";
+import Select from "./Select";
 
 const inputClass =
   "w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-2.5 text-[15px] text-[var(--text-h)] shadow-sm outline-none transition " +
@@ -89,8 +90,7 @@ export const ChooseTeamSection = ({
       ) : null}
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-        <select
-          className={inputClass}
+        <Select
           value={selectedTeamId}
           onChange={(event) => onSelectedTeamChange(event.target.value)}
           disabled={isLoadingTeams || teams.length === 0}
@@ -102,7 +102,7 @@ export const ChooseTeamSection = ({
               {team.name}
             </option>
           ))}
-        </select>
+        </Select>
         <button
           type="button"
           className={actionBtnClass}
