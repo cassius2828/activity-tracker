@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import axios from "axios";
 import { getMyJoinRequests } from "../services/joinRequests";
 import type { MyJoinRequestRow } from "../types/joinRequest";
 
@@ -14,6 +15,8 @@ export const useMyJoinRequests = (
 ): UseMyJoinRequestsResult => {
   const [myJoinRequests, setMyJoinRequests] = useState<MyJoinRequestRow[]>([]);
 
+  // Public imperative refresh — used after mutations (join/leave). Not cancellable
+  // because the consumer expects the refetch to complete and reflect the new state.
   const refresh = useCallback(async () => {
     if (!userId) {
       setMyJoinRequests([]);
@@ -27,9 +30,26 @@ export const useMyJoinRequests = (
     }
   }, [userId]);
 
+  // Mount + userId-change effect: cancellable so a fast logout / user swap
+  // doesn't race a stale response into the new user's state.
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    if (!userId) {
+      setMyJoinRequests([]);
+      return;
+    }
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const rows = await getMyJoinRequests(controller.signal);
+        if (controller.signal.aborted) return;
+        setMyJoinRequests(rows);
+      } catch (err) {
+        if (axios.isCancel(err) || controller.signal.aborted) return;
+        setMyJoinRequests([]);
+      }
+    })();
+    return () => controller.abort();
+  }, [userId]);
 
   return { myJoinRequests, refresh, setMyJoinRequests };
 };

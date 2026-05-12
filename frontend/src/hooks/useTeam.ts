@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import axios from "axios";
 import { getTeamById } from "../services/teams";
 
 type UseTeamResult = {
@@ -21,12 +22,12 @@ export const useTeam = (teamId: string | null | undefined): UseTeamResult => {
     const controller = new AbortController();
     const load = async () => {
       try {
-        const team = await getTeamById(teamId);
+        const team = await getTeamById(teamId, controller.signal);
         if (controller.signal.aborted) return;
         setTeamName(team?.name ?? null);
         setError(null);
-      } catch {
-        if (controller.signal.aborted) return;
+      } catch (err) {
+        if (axios.isCancel(err) || controller.signal.aborted) return;
         setTeamName(null);
         setError("Could not load team details.");
       }

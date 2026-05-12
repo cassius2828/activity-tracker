@@ -3,13 +3,17 @@ import type { JoinRequestRow, MyJoinRequestRow } from "../types/joinRequest";
 
 export type { JoinRequestRow, MyJoinRequestRow };
 
-export const getJoinRequests = async () => {
-  const response = await api.get<JoinRequestRow[]>("/join-requests");
+export const getJoinRequests = async (signal?: AbortSignal) => {
+  const response = await api.get<JoinRequestRow[]>("/join-requests", {
+    signal,
+  });
   return response.data;
 };
 
-export const getMyJoinRequests = async () => {
-  const response = await api.get<MyJoinRequestRow[]>("/join-requests/me");
+export const getMyJoinRequests = async (signal?: AbortSignal) => {
+  const response = await api.get<MyJoinRequestRow[]>("/join-requests/me", {
+    signal,
+  });
   return response.data;
 };
 

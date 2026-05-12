@@ -24,7 +24,7 @@ export const logout = async () => {
   return response.data;
 };
 
-export const getSession = async () => {
-  const response = await api.get<SessionResponse>("/auth/session");
+export const getSession = async (signal?: AbortSignal) => {
+  const response = await api.get<SessionResponse>("/auth/session", { signal });
   return response.data;
 };

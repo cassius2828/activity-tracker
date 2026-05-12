@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import axios from "axios";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
@@ -39,11 +40,11 @@ const TaskDetails = () => {
       setIsLoading(true);
       setLoadError(null);
       try {
-        const fetched = await getTaskById(id);
+        const fetched = await getTaskById(id, controller.signal);
         if (controller.signal.aborted) return;
         setTask(fetched);
-      } catch {
-        if (controller.signal.aborted) return;
+      } catch (err) {
+        if (axios.isCancel(err) || controller.signal.aborted) return;
         setTask(null);
         setLoadError("Could not load this task.");
       } finally {

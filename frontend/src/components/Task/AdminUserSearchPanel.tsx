@@ -23,7 +23,7 @@ const AdminUserSearchPanel = ({
 
   const fetcher = useCallback(
     async (trimmed: string, signal: AbortSignal) => {
-      const users = await searchUsers(trimmed);
+      const users = await searchUsers(trimmed, signal);
       if (signal.aborted) return [];
       const next = users.filter((user) => {
         const isCurrentUser = String(user.id) === String(currentUserId);

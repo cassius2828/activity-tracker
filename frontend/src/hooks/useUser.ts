@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import axios from "axios";
 import { getUserById, type User } from "../services/users";
 
 type UseUserResult = {
@@ -25,11 +26,11 @@ export const useUser = (id: string | undefined, enabled = true): UseUserResult =
     setError(null);
     void (async () => {
       try {
-        const result = await getUserById(id);
+        const result = await getUserById(id, controller.signal);
         if (controller.signal.aborted) return;
         setUser(result);
-      } catch {
-        if (controller.signal.aborted) return;
+      } catch (err) {
+        if (axios.isCancel(err) || controller.signal.aborted) return;
         setUser(null);
         setError("Could not load user.");
       } finally {

@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { getSession } from "../services/auth";
 import { AUTH_EXPIRED_EVENT } from "../services/api";
@@ -87,16 +88,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Validate the cached session against the server on mount. Prevents
   // localStorage tampering from rendering admin UI to non-admin users.
+  //
+  // Inlined (rather than calling refreshSession()) so we can pass an
+  // AbortSignal into getSession + guard the setSession writes against the
+  // StrictMode dev double-fire / fast-unmount race.
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     void (async () => {
-      await refreshSession();
-      if (!cancelled) setIsAuthLoading(false);
+      try {
+        const { user } = await getSession(controller.signal);
+        if (controller.signal.aborted) return;
+        setSession({
+          userId: String(user.id),
+          email: user.email,
+          role: user.role,
+          teamId: user.teamId === null ? null : String(user.teamId),
+        });
+      } catch (err) {
+        if (axios.isCancel(err) || controller.signal.aborted) return;
+        setSession(null);
+      } finally {
+        if (!controller.signal.aborted) setIsAuthLoading(false);
+      }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, [refreshSession]);
+    return () => controller.abort();
+  }, [setSession]);
 
   // Single source of truth for "the server says you're no longer logged in".
   // Triggered by the api 401 interceptor.

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
@@ -87,12 +88,12 @@ const Teams = () => {
     const loadTeams = async () => {
       setIsLoadingTeams(true);
       try {
-        const fetchedTeams = await getTeams();
+        const fetchedTeams = await getTeams(controller.signal);
         if (controller.signal.aborted) return;
         setTeams(fetchedTeams);
         setSelectedTeamId(fetchedTeams[0]?.id ?? "");
-      } catch {
-        if (controller.signal.aborted) return;
+      } catch (err) {
+        if (axios.isCancel(err) || controller.signal.aborted) return;
         toast.error("Failed to load teams.");
       } finally {
         if (!controller.signal.aborted) setIsLoadingTeams(false);

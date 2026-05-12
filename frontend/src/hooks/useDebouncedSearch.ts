@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import axios from "axios";
 
 type Options<T> = {
   /** Raw search input. The hook trims and debounces it. */
@@ -54,7 +55,7 @@ export const useDebouncedSearch = <T,>({
         if (controller.signal.aborted) return;
         setState({ results, isLoading: false, error: null });
       } catch (error) {
-        if (controller.signal.aborted) return;
+        if (axios.isCancel(error) || controller.signal.aborted) return;
         setState({ results: null, isLoading: false, error });
       }
     }, delayMs);

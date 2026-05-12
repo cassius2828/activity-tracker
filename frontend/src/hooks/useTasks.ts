@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import axios from "axios";
 import { getTasksByTeamId, getTasksByUserId } from "../services/tasks";
 import type { Task } from "../types/task";
 
@@ -29,12 +30,12 @@ export const useTasks = ({ teamId, userId }: Args): UseTasksResult => {
       setError(null);
       try {
         const data = teamId
-          ? await getTasksByTeamId(teamId)
-          : await getTasksByUserId(userId);
+          ? await getTasksByTeamId(teamId, signal)
+          : await getTasksByUserId(userId, signal);
         if (signal.aborted) return;
         setTasks(data);
-      } catch {
-        if (signal.aborted) return;
+      } catch (err) {
+        if (axios.isCancel(err) || signal.aborted) return;
         setTasks([]);
         setError("Could not load tasks right now.");
       } finally {

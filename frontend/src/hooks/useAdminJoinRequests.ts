@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import axios from "axios";
 import { getJoinRequests } from "../services/joinRequests";
 import type { JoinRequestRow } from "../types/joinRequest";
 
@@ -18,6 +19,8 @@ export const useAdminJoinRequests = (
   const [isLoading, setIsLoading] = useState<boolean>(enabled);
   const [error, setError] = useState<string | null>(null);
 
+  // Public imperative reload — used after mutations. Not cancellable because
+  // the caller expects the refetched list to land.
   const reload = useCallback(async () => {
     if (!enabled) {
       setIsLoading(false);
@@ -35,9 +38,30 @@ export const useAdminJoinRequests = (
     }
   }, [enabled]);
 
+  // Mount-time fetch with cancellation so a fast unmount / enabled-toggle
+  // doesn't race a stale response into the next consumer.
   useEffect(() => {
-    void reload();
-  }, [reload]);
+    if (!enabled) {
+      setIsLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    setIsLoading(true);
+    setError(null);
+    void (async () => {
+      try {
+        const rows = await getJoinRequests(controller.signal);
+        if (controller.signal.aborted) return;
+        setRequests(rows);
+      } catch (err) {
+        if (axios.isCancel(err) || controller.signal.aborted) return;
+        setError("Failed to load join requests.");
+      } finally {
+        if (!controller.signal.aborted) setIsLoading(false);
+      }
+    })();
+    return () => controller.abort();
+  }, [enabled]);
 
   return { requests, setRequests, isLoading, error, reload };
 };

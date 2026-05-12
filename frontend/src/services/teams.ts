@@ -3,13 +3,13 @@ import type { Team, TeamRole, TeamUser } from "../types/team";
 
 export type { Team, TeamRole, TeamUser };
 
-export const getTeams = async () => {
-  const response = await api.get<Team[]>("/teams");
+export const getTeams = async (signal?: AbortSignal) => {
+  const response = await api.get<Team[]>("/teams", { signal });
   return response.data;
 };
 
-export const getTeamById = async (teamId: string) => {
-  const response = await api.get<Team | Team[]>(`/teams/${teamId}`);
+export const getTeamById = async (teamId: string, signal?: AbortSignal) => {
+  const response = await api.get<Team | Team[]>(`/teams/${teamId}`, { signal });
   const payload = response.data;
   return Array.isArray(payload) ? (payload[0] ?? null) : payload;
 };
@@ -47,9 +47,10 @@ export const leaveTeam = async ({
   return response.data;
 };
 
-export const searchUsers = async (query: string) => {
+export const searchUsers = async (query: string, signal?: AbortSignal) => {
   const response = await api.get<TeamUser[]>("/users", {
     params: { q: query },
+    signal,
   });
   return response.data;
 };

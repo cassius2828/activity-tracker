@@ -15,6 +15,12 @@ export const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Caller aborted the request (e.g. effect cleanup on route change).
+    // Not a real failure: skip logging + 401 dispatch, just propagate so
+    // call sites can short-circuit via `axios.isCancel(err)`.
+    if (axios.isCancel(error)) {
+      return Promise.reject(error);
+    }
     if (isAxiosError(error)) {
       const status = error.response?.status;
       const url = error.config?.url ?? "";

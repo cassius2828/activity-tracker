@@ -23,18 +23,28 @@ const requireTask = (raw: TaskLike): Task => {
   return normalized;
 };
 
-export const getTasksByTeamId = async (teamId: string) => {
-  const response = await api.get<TaskLike[]>(`/tasks/team/${teamId}`);
+export const getTasksByTeamId = async (
+  teamId: string,
+  signal?: AbortSignal,
+) => {
+  const response = await api.get<TaskLike[]>(`/tasks/team/${teamId}`, {
+    signal,
+  });
   return normalizeTaskCollection(response.data);
 };
 
-export const getTasksByUserId = async (userId: string) => {
-  const response = await api.get<TaskLike[]>(`/tasks/user/${userId}`);
+export const getTasksByUserId = async (
+  userId: string,
+  signal?: AbortSignal,
+) => {
+  const response = await api.get<TaskLike[]>(`/tasks/user/${userId}`, {
+    signal,
+  });
   return normalizeTaskCollection(response.data);
 };
 
-export const getTaskById = async (id: string) => {
-  const response = await api.get<TaskLike>(`/tasks/${id}`);
+export const getTaskById = async (id: string, signal?: AbortSignal) => {
+  const response = await api.get<TaskLike>(`/tasks/${id}`, { signal });
   return requireTask(response.data);
 };
 

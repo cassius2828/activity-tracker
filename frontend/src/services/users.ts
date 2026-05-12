@@ -21,13 +21,13 @@ type UpdateUserBody = {
 
 export type { User, CreateUserBody, UpdateUserBody };
 
-export const getUsers = async () => {
-  const response = await api.get<User[]>("/users");
+export const getUsers = async (signal?: AbortSignal) => {
+  const response = await api.get<User[]>("/users", { signal });
   return response.data;
 };
 
-export const getUserById = async (id: string) => {
-  const response = await api.get<User>(`/users/${id}`);
+export const getUserById = async (id: string, signal?: AbortSignal) => {
+  const response = await api.get<User>(`/users/${id}`, { signal });
   return response.data;
 };
 
