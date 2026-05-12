@@ -9,6 +9,7 @@ import Footer from './components/Footer'
 import TaskDetails from './pages/TaskDetails'
 import Teams from "./pages/Teams.tsx";
 import Admin from "./pages/Admin.tsx";
+
 function App() {
   return (
     <>
