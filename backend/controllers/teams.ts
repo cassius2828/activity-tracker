@@ -1,14 +1,14 @@
 import { db } from "../config/db";
-import { teams, users } from "../config/schema";
+import { joinRequests, teams, users } from "../config/schema";
 import { Request, Response } from "express";
-import { inArray, eq } from "drizzle-orm";
+import { inArray, eq, and } from "drizzle-orm";
 
 export const createTeam = async (req: Request, res: Response) => {
   try {
-    const { name, description, userIds } = req.body as {
+    const { name, description, creators } = req.body as {
       name: string;
       description: string;
-      userIds?: number[];
+      creators?: { id: string; role: string }[]; // will establish team roles later
     };
     if (!name || !description) {
       return res
@@ -22,7 +22,8 @@ export const createTeam = async (req: Request, res: Response) => {
       .returning();
 
     // we will update all users to have the team id in thier table
-    if (userIds) {
+    if (creators) {
+      const userIds = creators.map((creator) => parseInt(creator.id));
       await db
         .update(users)
         .set({ teamId: newTeam.id })
@@ -95,6 +96,116 @@ export const getTeamByUserId = async (
     return res.status(200).json(fetchedTeam);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const leaveTeam = async (req: Request, res: Response) => {
+  try {
+    const { teamId } = req.params as { teamId: string };
+    const { userId } = req.body as { userId: string };
+    if (!teamId || !userId) {
+      return res
+        .status(400)
+        .json({ message: "teamId and userId are required" });
+    }
+    // * since we only support one team, we do not need the teamId for now
+    // const parsedTeamId = parseInt(teamId);
+    const parsedUserId = parseInt(userId);
+    await db
+      .update(users)
+      .set({ teamId: null })
+      .where(eq(users.id, parsedUserId));
+    return res.status(200).json({ message: "User left team successfully" });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const requestJoinTeam = async (req: Request, res: Response) => {
+  try {
+    const { teamId } = req.params as { teamId: string };
+    const { userId } = req.body as { userId: string };
+    if (!teamId || !userId) {
+      return res
+        .status(400)
+        .json({ message: "teamId and userId are required" });
+    }
+    const parsedTeamId = parseInt(teamId);
+    const parsedUserId = parseInt(userId);
+    const [existingJoinRequest] = await db
+      .select({ id: joinRequests.id })
+      .from(joinRequests)
+      .where(
+        and(
+          eq(joinRequests.teamId, parsedTeamId),
+          eq(joinRequests.userId, parsedUserId),
+        ),
+      );
+    if (existingJoinRequest) {
+      return res.status(400).json({ message: "Join request already exists" });
+    }
+    await db
+      .insert(joinRequests)
+      .values({ teamId: parsedTeamId, userId: parsedUserId });
+    return res
+      .status(200)
+      .json({ message: `Join request sent to team ${parsedTeamId}!` });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const approveJoinRequest = async (req: Request, res: Response) => {
+  try {
+    const { joinRequestId } = req.params as { joinRequestId: string };
+    const { userId } = req.body as { userId: string };
+
+    if (!joinRequestId || !userId) {
+      return res
+        .status(400)
+        .json({ message: "joinRequestId and userId are required" });
+    }
+    // ensure user is added to team
+    // delete join request from join request table
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const joinTeam = async (req: Request, res: Response) => {
+  try {
+    const { teamId } = req.params as { teamId: string };
+    const { userId } = req.body as { userId: string };
+    if (!teamId || !userId) {
+      return res
+        .status(400)
+        .json({ message: "teamId and userId are required" });
+    }
+    const parsedTeamId = parseInt(teamId);
+    const parsedUserId = parseInt(userId);
+    const [updatedUser] = await db
+      .update(users)
+      .set({ teamId: parsedTeamId })
+      .where(eq(users.id, parsedUserId))
+      .returning();
+
+    if (!updatedUser) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    await db.delete(joinRequests).where(eq(joinRequests.teamId, parsedTeamId));
+    
+    return res
+      .status(200)
+      .json({
+        message: `${updatedUser.email} joined team ${teamId} successfully`,
+      });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { chooseTeam, createTeam, getTeams, type Team, type TeamRole } from "../service/teams";
+import { createTeam, getTeams, type Team, type TeamRole } from "../service/teams";
 import {
   ChooseTeamSection,
   CreateTeamSection,
@@ -29,24 +29,10 @@ const Teams = () => {
     [session?.email, session?.role, session?.userId],
   );
 
-  const handleChooseTeam = async (teamId: string) => {
+  const handleChooseTeam = (teamId: string) => {
     if (!teamId) return;
-    if (!actor.id) {
-      setNotice("You must be signed in to choose a team.");
-      return;
-    }
-    setIsChoosing(true);
-    try {
-      await chooseTeam({ teamId, user: actor });
-      setNotice("Team selected successfully.");
-      setIsChoosing(false);
-      navigate(`/tasks/team/${teamId}`);
-    } catch (err) {
-      console.error(err);
-      setNotice("Failed to select team.");
-    } finally {
-      setIsChoosing(false);
-    }
+    navigate(`/tasks/team/${teamId}`);
+
   };
 
   const handleCreateTeam = async (event: FormEvent<HTMLFormElement>) => {
@@ -83,7 +69,7 @@ const Teams = () => {
       try {
         const fetchedTeams = await getTeams();
         setTeams(fetchedTeams);
-        setSelectedTeamId(session?.teamId ?? fetchedTeams[0]?.id ?? "");
+        setSelectedTeamId(fetchedTeams[0]?.id ?? "");
         setNotice(null);
       } catch (err) {
         console.error(err);
@@ -94,7 +80,7 @@ const Teams = () => {
     };
 
     void loadTeams();
-  }, [session?.teamId, setIsLoadingTeams, setSelectedTeamId, setTeams]);
+  }, []);
 
 
 

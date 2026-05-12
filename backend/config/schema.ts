@@ -82,6 +82,19 @@ export const teams = pgTable(
     index("idx_teams_updatedAt").on(table.updatedAt),
   ],
 );
+
+export const joinRequests = pgTable(
+  "join_requests",
+  {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    teamId: integer().references(() => teams.id, { onDelete: "cascade" }),
+    userId: integer().references(() => users.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    index("idx_join_requests_teamId").on(table.teamId),
+    index("idx_join_requests_userId").on(table.userId),
+  ],
+);
 // Server-side sessions: cookie holds random token; DB stores hash + metadata
 export const sessions = pgTable(
   "sessions",

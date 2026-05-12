@@ -32,25 +32,16 @@ export const getTeamById = async (teamId: string) => {
 export const createTeam = async ({
   name,
   description,
-  creator,
+  creators,
 }: {
   name: string;
   description: string;
-  creator: Pick<TeamUser, "id" | "email" | "role">;
+  creators: Pick<TeamUser, "id" | "role">[];
 }) => {
-  const response = await api.post<Team>("/teams", { name, description, creator });
-  return response.data;
-};
-
-export const chooseTeam = async ({
-  teamId,
-  user,
-}: {
-  teamId: string;
-  user: Pick<TeamUser, "id" | "email" | "role">;
-}) => {
-  const response = await api.post<TeamUser>(`/teams/${teamId}/choose`, {
-    userId: user.id,
+  const response = await api.post<Team>("/teams", {
+    name,
+    description,
+    creators
   });
   return response.data;
 };
@@ -62,9 +53,12 @@ export const leaveTeam = async ({
   teamId: string;
   userId: string;
 }) => {
-  const response = await api.post<{ message: string }>(`/teams/${teamId}/leave`, {
-    userId,
-  });
+  const response = await api.put<{ message: string }>(
+    `/teams/${teamId}/leave`,
+    {
+      userId,
+    },
+  );
   return response.data;
 };
 
@@ -98,7 +92,9 @@ export const assignUserToTeam = async ({
   teamId: string;
   userId: string;
 }) => {
-  const response = await api.post<TeamUser>(`/teams/${teamId}/members`, { userId });
+  const response = await api.post<TeamUser>(`/teams/${teamId}/members`, {
+    userId,
+  });
   return response.data;
 };
 
