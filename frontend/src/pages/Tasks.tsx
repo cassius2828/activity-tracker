@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { getTasksByTeamId, getTasksByUserId, type Task } from "../service/tasks";
+import {
+  createTask,
+  getTasksByTeamId,
+  getTasksByUserId,
+  updateTask,
+  type Task,
+  type TaskInput,
+} from "../service/tasks";
+import TaskFormModal from "../components/TaskFormModal";
 import {
   assignUserToTeam,
   getTeamById,
@@ -9,7 +17,11 @@ import {
   searchUsers,
   type TeamUser,
 } from "../service/teams";
-import { requestJoinTeam } from "../service/joinRequests";
+import {
+  getMyJoinRequests,
+  requestJoinTeam,
+  type MyJoinRequestRow,
+} from "../service/joinRequests";
 
 type Priority = "none" | "low" | "medium" | "high";
 
@@ -33,7 +45,7 @@ const inputClass =
   "focus:border-[var(--accent-border)] focus:ring-2 focus:ring-[var(--accent)]/25";
 
 const Tasks = () => {
-  const { session, setSession } = useAuth();
+  const { session, refreshSession } = useAuth();
   const { teamId, userId } = useParams();
 
   const [query, setQuery] = useState("");
@@ -48,11 +60,28 @@ const Tasks = () => {
   const [searchResults, setSearchResults] = useState<TeamUser[]>([]);
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
   const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
+  const [myJoinRequests, setMyJoinRequests] = useState<MyJoinRequestRow[]>([]);
+
+  const [taskModal, setTaskModal] = useState<
+    | { mode: "create" }
+    | { mode: "edit"; task: Task }
+    | null
+  >(null);
+  const [isSavingTask, setIsSavingTask] = useState(false);
+  const [taskFormError, setTaskFormError] = useState<string | null>(null);
+  const [taskNotice, setTaskNotice] = useState<string | null>(null);
 
   const currentUserId = session?.userId ?? userId ?? "";
   const isViewingTeamTasks = Boolean(teamId);
   const isMemberOfViewedTeam = Boolean(teamId && session?.teamId === teamId);
   const isAdmin = session?.role === "admin";
+  const hasPendingRequestForViewedTeam = useMemo(
+    () =>
+      Boolean(
+        teamId && myJoinRequests.some((row) => String(row.teamId) === teamId),
+      ),
+    [teamId, myJoinRequests],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -84,6 +113,23 @@ const Tasks = () => {
   }, [teamId]);
 
   useEffect(() => {
+    if (!session?.userId) {
+      setMyJoinRequests([]);
+      return;
+    }
+    const loadMyRequests = async () => {
+      try {
+        const rows = await getMyJoinRequests();
+        setMyJoinRequests(rows);
+      } catch (err) {
+        console.error(err);
+        setMyJoinRequests([]);
+      }
+    };
+    void loadMyRequests();
+  }, [session?.userId]);
+
+  useEffect(() => {
     const fetchTasks = async () => {
       setIsLoadingTasks(true);
       setTasksError(null);
@@ -111,7 +157,7 @@ const Tasks = () => {
     try {
       const result = await leaveTeam({ teamId, userId: currentUserId });
       if (session?.userId === currentUserId) {
-        setSession({ ...session, teamId: null });
+        await refreshSession();
       }
       setTeamActionNotice(result.message);
     } catch (err) {
@@ -127,9 +173,17 @@ const Tasks = () => {
       setTeamActionNotice("You must be signed in to request joining a team.");
       return;
     }
+    if (hasPendingRequestForViewedTeam) return;
     setIsTeamActionLoading(true);
     try {
       const result = await requestJoinTeam({ teamId, userId: currentUserId });
+      // Re-pull the user's pending requests so the button stays disabled.
+      try {
+        const rows = await getMyJoinRequests();
+        setMyJoinRequests(rows);
+      } catch (refreshErr) {
+        console.error(refreshErr);
+      }
       setTeamActionNotice(result.message);
     } catch (err) {
       console.error(err);
@@ -138,18 +192,48 @@ const Tasks = () => {
     setIsTeamActionLoading(false);
   };
 
-  const handleSearchUsers = async () => {
-    setIsSearchingUsers(true);
-    try {
-      const users = await searchUsers(searchQuery);
-      setSearchResults(users);
-    } catch (err) {
-      console.error(err);
+  // Debounced live search — fires 300ms after the user stops typing.
+  // Cancels stale results so a slower in-flight request can't overwrite a newer one.
+  useEffect(() => {
+    if (!isAdmin || !isViewingTeamTasks) return;
+
+    const trimmed = searchQuery.trim();
+    if (!trimmed) {
       setSearchResults([]);
-      setTeamActionNotice("Could not search users.");
+      setIsSearchingUsers(false);
+      return;
     }
-    setIsSearchingUsers(false);
-  };
+
+    let cancelled = false;
+    setIsSearchingUsers(true);
+
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const users = await searchUsers(trimmed);
+        if (cancelled) return;
+        setSearchResults(
+          users.filter((user) => {
+            const isCurrentUser = String(user.id) === String(currentUserId);
+            const isAlreadyOnViewedTeam =
+              teamId != null && String(user.teamId) === String(teamId);
+            return !isCurrentUser && !isAlreadyOnViewedTeam;
+          }),
+        );
+      } catch (err) {
+        if (cancelled) return;
+        console.error(err);
+        setSearchResults([]);
+        setTeamActionNotice("Could not search users.");
+      } finally {
+        if (!cancelled) setIsSearchingUsers(false);
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [searchQuery, isAdmin, isViewingTeamTasks, currentUserId, teamId]);
 
   const handleAssignUser = async (targetUserId: string) => {
     if (!teamId) return;
@@ -163,6 +247,10 @@ const Tasks = () => {
       setSearchResults((previous) =>
         previous.map((user) => (user.id === targetUserId ? { ...user, teamId } : user)),
       );
+      // If the admin assigned themselves, the cached session needs to reflect the new teamId.
+      if (session?.userId === targetUserId) {
+        await refreshSession();
+      }
       setTeamActionNotice(
         targetUser
           ? `Assigned ${targetUser.email} to the team.`
@@ -175,21 +263,85 @@ const Tasks = () => {
     setAssigningUserId(null);
   };
 
+  const openCreateTask = () => {
+    setTaskFormError(null);
+    setTaskModal({ mode: "create" });
+  };
+
+  const openEditTask = (task: Task) => {
+    setTaskFormError(null);
+    setTaskModal({ mode: "edit", task });
+  };
+
+  const closeTaskModal = () => {
+    if (isSavingTask) return;
+    setTaskModal(null);
+    setTaskFormError(null);
+  };
+
+  const handleTaskSubmit = async (input: TaskInput) => {
+    if (!taskModal) return;
+    setIsSavingTask(true);
+    setTaskFormError(null);
+    try {
+      if (taskModal.mode === "create") {
+        const created = await createTask(input);
+        setTasks((previous) => [created, ...previous]);
+        setTaskNotice("Task created.");
+      } else {
+        const updated = await updateTask(taskModal.task.id, input);
+        setTasks((previous) =>
+          previous.map((task) => (task.id === updated.id ? updated : task)),
+        );
+        setTaskNotice("Task updated.");
+      }
+      setTaskModal(null);
+    } catch (err) {
+      console.error(err);
+      setTaskFormError(
+        taskModal.mode === "create"
+          ? "Could not create task. Try again."
+          : "Could not save changes. Try again.",
+      );
+    } finally {
+      setIsSavingTask(false);
+    }
+  };
+
+  const canCreateTasks = Boolean(session?.userId);
+
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 text-left sm:px-6 sm:py-10">
-      <header className="mb-8 space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
-          Tasks
-        </p>
-        <h1 className="!m-0 !text-3xl !tracking-tight text-[var(--text-h)] sm:!text-4xl">
-          {isViewingTeamTasks ? (teamName ? `${teamName} team work` : "Team work") : "Your work"}
-        </h1>
-        <p className="text-[15px] text-[var(--text)]">
-          {isViewingTeamTasks
-            ? "View team tasks and manage team participation."
-            : "Tasks scoped to this user."}
-        </p>
+      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
+            Tasks
+          </p>
+          <h1 className="!m-0 !text-3xl !tracking-tight text-[var(--text-h)] sm:!text-4xl">
+            {isViewingTeamTasks ? (teamName ? `${teamName} team work` : "Team work") : "Your work"}
+          </h1>
+          <p className="text-[15px] text-[var(--text)]">
+            {isViewingTeamTasks
+              ? "View team tasks and manage team participation."
+              : "Tasks scoped to this user."}
+          </p>
+        </div>
+        {canCreateTasks && (
+          <button
+            type="button"
+            onClick={openCreateTask}
+            className="rounded-xl bg-[var(--accent)] px-4 py-2.5 text-[14px] font-semibold text-white transition hover:brightness-110"
+          >
+            New task
+          </button>
+        )}
       </header>
+
+      {taskNotice && (
+        <p className="mb-5 rounded-xl border border-[var(--border)] bg-[var(--code-bg)] px-4 py-3 text-[14px] text-[var(--text)]">
+          {taskNotice}
+        </p>
+      )}
 
       {isViewingTeamTasks && teamId && (
         <section className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4 shadow-sm">
@@ -213,10 +365,14 @@ const Tasks = () => {
               <button
                 type="button"
                 onClick={() => void handleJoinRequest()}
-                disabled={isTeamActionLoading}
+                disabled={isTeamActionLoading || hasPendingRequestForViewedTeam}
                 className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[14px] font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isTeamActionLoading ? "Submitting..." : "Request to join team"}
+                {hasPendingRequestForViewedTeam
+                  ? "Requested to join team"
+                  : isTeamActionLoading
+                    ? "Submitting..."
+                    : "Request to join team"}
               </button>
             )}
           </div>
@@ -232,7 +388,7 @@ const Tasks = () => {
               <h3 className="!m-0 !text-base !tracking-tight text-[var(--text-h)]">
                 Assign users to this team
               </h3>
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <div className="mt-3">
                 <input
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
@@ -240,15 +396,17 @@ const Tasks = () => {
                   placeholder="Search by email"
                   type="search"
                 />
-                <button
-                  type="button"
-                  onClick={() => void handleSearchUsers()}
-                  disabled={isSearchingUsers}
-                  className="rounded-xl border border-[var(--border)] px-4 py-2 text-[14px] font-medium text-[var(--text-h)] transition hover:bg-[var(--code-bg)] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isSearchingUsers ? "Searching..." : "Search users"}
-                </button>
               </div>
+
+              {searchQuery.trim() && (
+                <div className="mt-2 text-[12px] text-[var(--text)]">
+                  {isSearchingUsers
+                    ? "Searching..."
+                    : searchResults.length === 0
+                      ? "No matching users."
+                      : `${searchResults.length} match${searchResults.length === 1 ? "" : "es"}`}
+                </div>
+              )}
 
               {searchResults.length > 0 && (
                 <ul className="mt-4 space-y-2">
@@ -342,32 +500,64 @@ const Tasks = () => {
       </section>
 
       <ul className="flex flex-col gap-3">
-        {filtered.map((task) => (
-          <li key={task.id}>
-            <article className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5 shadow-sm transition hover:border-[var(--accent-border)]/40">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1 space-y-1">
-                  <h2 className="!m-0 !text-lg !tracking-tight text-[var(--text-h)]">{task.title}</h2>
-                  <p className="text-[14px] leading-relaxed text-[var(--text)]">{task.description}</p>
+        {filtered.map((task) => {
+          const canEditTask = Boolean(
+            session?.userId && session.userId === task.userId,
+          );
+          return (
+            <li key={task.id}>
+              <article
+                onClick={canEditTask ? () => openEditTask(task) : undefined}
+                role={canEditTask ? "button" : undefined}
+                tabIndex={canEditTask ? 0 : undefined}
+                onKeyDown={(event) => {
+                  if (!canEditTask) return;
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    openEditTask(task);
+                  }
+                }}
+                className={`rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5 shadow-sm transition hover:border-[var(--accent-border)]/40 ${
+                  canEditTask
+                    ? "cursor-pointer focus:outline-none focus-visible:border-[var(--accent-border)] focus-visible:ring-2 focus-visible:ring-[var(--accent)]/35"
+                    : ""
+                }`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <h2 className="!m-0 !text-lg !tracking-tight text-[var(--text-h)]">
+                      {task.title}
+                    </h2>
+                    <p className="text-[14px] leading-relaxed text-[var(--text)]">
+                      {task.description}
+                    </p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-lg px-2.5 py-1 text-[12px] font-semibold uppercase tracking-wide ${priorityStyles[task.priority]}`}
+                  >
+                    {priorityLabel[task.priority]}
+                  </span>
                 </div>
-                <span
-                  className={`shrink-0 rounded-lg px-2.5 py-1 text-[12px] font-semibold uppercase tracking-wide ${priorityStyles[task.priority]}`}
-                >
-                  {priorityLabel[task.priority]}
-                </span>
-              </div>
-              <p className="mt-3 text-[13px] text-[var(--text)]">
-                Due{" "}
-                <time dateTime={task.dueDate} className="font-medium text-[var(--text-h)]">
-                  {task.dueDate || "No due date"}
-                </time>
-                <Link to={`/tasks/${task.id}`} className="ml-2 text-[var(--text-h)] underline-offset-2 hover:underline">
-                  View details
-                </Link>
-              </p>
-            </article>
-          </li>
-        ))}
+                <p className="mt-3 text-[13px] text-[var(--text)]">
+                  Due{" "}
+                  <time
+                    dateTime={task.dueDate}
+                    className="font-medium text-[var(--text-h)]"
+                  >
+                    {task.dueDate || "No due date"}
+                  </time>
+                  <Link
+                    to={`/tasks/${task.id}`}
+                    onClick={(event) => event.stopPropagation()}
+                    className="ml-2 text-[var(--text-h)] underline-offset-2 hover:underline"
+                  >
+                    View details
+                  </Link>
+                </p>
+              </article>
+            </li>
+          );
+        })}
       </ul>
 
       {!isLoadingTasks && filtered.length === 0 && (
@@ -381,6 +571,18 @@ const Tasks = () => {
           Loading tasks...
         </p>
       )}
+
+      <TaskFormModal
+        open={taskModal !== null}
+        mode={taskModal?.mode === "edit" ? "edit" : "create"}
+        initialTask={taskModal?.mode === "edit" ? taskModal.task : null}
+        currentTeamId={session?.teamId ?? null}
+        defaultIncludeTeam={isViewingTeamTasks}
+        isSubmitting={isSavingTask}
+        errorMessage={taskFormError}
+        onClose={closeTaskModal}
+        onSubmit={handleTaskSubmit}
+      />
     </div>
   );
 };

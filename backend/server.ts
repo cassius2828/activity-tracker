@@ -28,14 +28,19 @@ app.use(
 );
 app.use(cookieParser());
 app.use(helmet());
+// morgan first so rate-limited requests still get logged (helps debugging 429s).
+app.use(morgan("dev"));
 app.use(
   rateLimit({
     windowMs: 5 * 60 * 1000,
-    max: 40,
+    // Generous in dev: live-typing search + page navigation can produce many
+    // requests in short bursts. Tune this down for production traffic.
+    max: 300,
     message: "Too many requests, please try again later.",
+    standardHeaders: true,
+    legacyHeaders: false,
   }),
 );
-app.use(morgan("dev"));
 app.use(express.json());
 
 // Routers

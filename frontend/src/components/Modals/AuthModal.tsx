@@ -21,7 +21,7 @@ const emptyForm = (): AuthFormValues => ({
 
 const AuthModal = () => {
   const navigate = useNavigate();
-  const { session, setSession } = useAuth();
+  const { setSession } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const mode = searchParams.get("mode");
@@ -33,35 +33,21 @@ const AuthModal = () => {
     password,
     confirmPassword,
   }: SubmitAuthPayload) => {
-    const baseSession = session ?? {
-      userId: "",
-      email: "",
-      role: "user" as const,
-      teamId: null,
-    };
     setIsLoading(true);
     try {
-      if (isLogin) {
-        const response = await login({ email, password });
-        setSession({
-          ...baseSession,
-          userId: String(response.user.id),
-          email: response.user.email,
-          role: response.user.role,
-        });
-      } else {
-        const response = await register({
-          email,
-          password,
-          confirmPassword: confirmPassword ?? "",
-        });
-        setSession({
-          ...baseSession,
-          userId: String(response.user.id),
-          email: response.user.email,
-          role: response.user.role,
-        });
-      }
+      const response = isLogin
+        ? await login({ email, password })
+        : await register({
+            email,
+            password,
+            confirmPassword: confirmPassword ?? "",
+          });
+      setSession({
+        userId: String(response.user.id),
+        email: response.user.email,
+        role: response.user.role,
+        teamId: response.user.teamId === null ? null : String(response.user.teamId),
+      });
       navigate("/teams");
     } catch (err) {
       console.error(err);

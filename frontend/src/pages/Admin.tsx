@@ -16,7 +16,7 @@ const denyBtnClass =
 type PendingAction = { id: number; type: "approve" | "deny" } | null;
 
 const Admin = () => {
-  const { session } = useAuth();
+  const { session, refreshSession } = useAuth();
   const [requests, setRequests] = useState<JoinRequestRow[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
@@ -53,6 +53,11 @@ const Admin = () => {
     setRequests((rows) => rows.filter((row) => row.id !== request.id));
     try {
       await approveJoinRequest(request.id);
+      // If the admin approved their own pending request, the cached session
+      // is now stale (their teamId just changed). Refresh from the server.
+      if (session && String(request.userId) === session.userId) {
+        await refreshSession();
+      }
       setNotice(`Approved ${request.userEmail} for ${request.teamName}.`);
     } catch (err) {
       console.error(err);

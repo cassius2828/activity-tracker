@@ -59,7 +59,12 @@ export const register = async (req: Request, res: Response) => {
     const [newUser] = await db
       .insert(users)
       .values({ email, password: hashedPassword })
-      .returning({ id: users.id, email: users.email, role: users.role });
+      .returning({
+        id: users.id,
+        email: users.email,
+        role: users.role,
+        teamId: users.teamId,
+      });
 
     if (!newUser) {
       return res.status(500).json({ message: "Failed to create user" });
@@ -71,6 +76,24 @@ export const register = async (req: Request, res: Response) => {
       message: "Registration successful",
       user: session.user,
       sessionId: session.sessionId,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const getSession = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    return res.status(200).json({
+      user: {
+        id: req.user.id,
+        email: req.user.email,
+        role: req.user.role,
+        teamId: req.user.teamId,
+      },
     });
   } catch (err) {
     res.status(500).json({ message: "Internal server error" });

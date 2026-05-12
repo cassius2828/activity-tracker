@@ -1,4 +1,12 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { getSession } from "../service/auth";
 
 export type AuthSession = {
   userId: string;
@@ -10,6 +18,7 @@ export type AuthSession = {
 type AuthContextValue = {
   session: AuthSession | null;
   setSession: (session: AuthSession | null) => void;
+  refreshSession: () => Promise<AuthSession | null>;
 };
 
 const SESSION_STORAGE_KEY = "activity-tracker.auth-session.v1";
@@ -31,7 +40,7 @@ const loadStoredSession = (): AuthSession | null => {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSessionState] = useState<AuthSession | null>(() => loadStoredSession());
 
-  const setSession = (nextSession: AuthSession | null) => {
+  const setSession = useCallback((nextSession: AuthSession | null) => {
     setSessionState(nextSession);
     if (typeof window === "undefined") return;
     if (nextSession) {
@@ -39,9 +48,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     window.localStorage.removeItem(SESSION_STORAGE_KEY);
-  };
+  }, []);
 
-  const value = useMemo(() => ({ session, setSession }), [session]);
+  // Re-fetch the current user from the server and sync the cached AuthSession.
+  // Use after any action that could change the current user's identity / team / role.
+  const refreshSession = useCallback(async (): Promise<AuthSession | null> => {
+    try {
+      const { user } = await getSession();
+      const next: AuthSession = {
+        userId: String(user.id),
+        email: user.email,
+        role: user.role,
+        teamId: user.teamId === null ? null : String(user.teamId),
+      };
+      setSession(next);
+      return next;
+    } catch (err) {
+      console.error(err);
+      // 401 (or any failure) means the cached session is no longer valid.
+      setSession(null);
+      return null;
+    }
+  }, [setSession]);
+
+  const value = useMemo(
+    () => ({ session, setSession, refreshSession }),
+    [session, setSession, refreshSession],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

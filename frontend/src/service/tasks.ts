@@ -1,16 +1,33 @@
 import { api } from "./api";
+
+export type TaskPriority = "none" | "low" | "medium" | "high";
+export type TaskCategory = "work" | "personal" | "other";
+export type TaskStatus = "pending" | "completed" | "in_progress";
+
 export type Task = {
   id: string;
   userId: string;
+  teamId: string | null;
   title: string;
   description: string;
   dueDate: string;
-  priority: "none" | "low" | "medium" | "high";
-  category: "work" | "personal" | "other";
-  status: "pending" | "completed" | "in_progress";
+  priority: TaskPriority;
+  category: TaskCategory;
+  status: TaskStatus;
 };
 
-type TaskLike = Partial<Task> & {
+export type TaskInput = {
+  title: string;
+  description: string;
+  dueDate?: string | null;
+  priority?: TaskPriority;
+  category?: TaskCategory;
+  status?: TaskStatus;
+  teamId?: string | number | null;
+};
+
+type TaskLike = Partial<Omit<Task, "teamId">> & {
+  teamId?: string | number | null;
   tasks?: Partial<Task>;
 };
 
@@ -19,9 +36,12 @@ const normalizeTask = (taskLike: TaskLike): Task | null => {
   if (!source.id || !source.title || !source.description || !source.userId) {
     return null;
   }
+  const rawTeamId = (source as { teamId?: string | number | null }).teamId;
   return {
     id: String(source.id),
     userId: String(source.userId),
+    teamId:
+      rawTeamId === undefined || rawTeamId === null ? null : String(rawTeamId),
     title: source.title,
     description: source.description,
     dueDate: source.dueDate ? String(source.dueDate) : "",
@@ -32,9 +52,20 @@ const normalizeTask = (taskLike: TaskLike): Task | null => {
 };
 
 const normalizeTaskCollection = (data: TaskLike[]) =>
-  data
-    .map(normalizeTask)
-    .filter((task): task is Task => task !== null);
+  data.map(normalizeTask).filter((task): task is Task => task !== null);
+
+const toApiBody = (input: TaskInput) => ({
+  title: input.title,
+  description: input.description,
+  dueDate: input.dueDate ?? null,
+  priority: input.priority,
+  category: input.category,
+  status: input.status,
+  teamId:
+    input.teamId === undefined || input.teamId === null || input.teamId === ""
+      ? null
+      : Number(input.teamId),
+});
 
 const getTasksByTeamId = async (teamId: string) => {
   try {
@@ -70,9 +101,9 @@ const getTaskById = async (id: string) => {
   }
 };
 
-const createTask = async (taskBody: Omit<Task, "id">) => {
+const createTask = async (taskBody: TaskInput) => {
   try {
-    const response = await api.post<TaskLike>("/tasks", taskBody);
+    const response = await api.post<TaskLike>("/tasks", toApiBody(taskBody));
     const normalizedTask = normalizeTask(response.data);
     if (!normalizedTask) {
       throw new Error("Task response is missing required fields");
@@ -84,9 +115,12 @@ const createTask = async (taskBody: Omit<Task, "id">) => {
   }
 };
 
-const updateTask = async (id: string, taskBody: Omit<Task, "id">) => {
+const updateTask = async (id: string, taskBody: TaskInput) => {
   try {
-    const response = await api.put<TaskLike>("/tasks/" + id, taskBody);
+    const response = await api.put<TaskLike>(
+      "/tasks/" + id,
+      toApiBody(taskBody),
+    );
     const normalizedTask = normalizeTask(response.data);
     if (!normalizedTask) {
       throw new Error("Task response is missing required fields");
@@ -107,4 +141,12 @@ const deleteTask = async (id: string) => {
     throw err;
   }
 };
-export { getTasksByTeamId, getTasksByUserId, getTaskById, createTask, updateTask, deleteTask };
+
+export {
+  getTasksByTeamId,
+  getTasksByUserId,
+  getTaskById,
+  createTask,
+  updateTask,
+  deleteTask,
+};

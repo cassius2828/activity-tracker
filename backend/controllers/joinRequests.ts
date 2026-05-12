@@ -24,6 +24,27 @@ export const getJoinRequests = async (_req: Request, res: Response) => {
   }
 };
 
+export const getMyJoinRequests = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const rows = await db
+      .select({
+        id: joinRequests.id,
+        teamId: teams.id,
+        teamName: teams.name,
+      })
+      .from(joinRequests)
+      .innerJoin(teams, eq(joinRequests.teamId, teams.id))
+      .where(eq(joinRequests.userId, req.user.id));
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 export const requestJoinTeam = async (req: Request, res: Response) => {
   try {
     const { teamId, userId } = req.body as {

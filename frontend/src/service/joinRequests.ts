@@ -8,8 +8,19 @@ export type JoinRequestRow = {
   userEmail: string;
 };
 
+export type MyJoinRequestRow = {
+  id: number;
+  teamId: number;
+  teamName: string;
+};
+
 export const getJoinRequests = async () => {
   const response = await api.get<JoinRequestRow[]>("/join-requests");
+  return response.data;
+};
+
+export const getMyJoinRequests = async () => {
+  const response = await api.get<MyJoinRequestRow[]>("/join-requests/me");
   return response.data;
 };
 

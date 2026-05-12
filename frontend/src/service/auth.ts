@@ -12,18 +12,17 @@ type AuthUser = {
   id: number;
   email: string;
   role: "admin" | "user";
-};
-
-type Session = {
-  id: string;
-  userId: number;
-  expiresAt: string;
+  teamId: number | null;
 };
 
 type AuthResponse = {
   message: string;
   user: AuthUser;
   sessionId?: string;
+};
+
+type SessionResponse = {
+  user: AuthUser;
 };
 
 const login = async (loginBody: LoginBody) => {
@@ -58,9 +57,7 @@ const logout = async () => {
 
 const getSession = async () => {
   try {
-    const response = await api.get<{ message: string; session: Session }>(
-      "/auth/session",
-    );
+    const response = await api.get<SessionResponse>("/auth/session");
     return response.data;
   } catch (err) {
     console.error(err);

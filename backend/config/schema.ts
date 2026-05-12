@@ -50,6 +50,7 @@ export const tasks = pgTable(
   {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
     userId: integer().references(() => users.id, { onDelete: "cascade" }),
+    teamId: integer().references(() => teams.id, { onDelete: "set null" }),
     title: text().notNull(),
     description: text().notNull(),
     dueDate: timestamp(),
@@ -61,6 +62,7 @@ export const tasks = pgTable(
   },
   (table) => [
     index("idx_tasks_userId").on(table.userId),
+    index("idx_tasks_teamId").on(table.teamId),
     index("idx_tasks_dueDate").on(table.dueDate),
     index("idx_tasks_priority").on(table.priority),
     index("idx_tasks_category").on(table.category),

@@ -21,7 +21,7 @@ export const createSession = async ({
   user,
   req,
 }: {
-  user: Pick<User, "id" | "email" | "role">;
+  user: Pick<User, "id" | "email" | "role" | "teamId">;
   req: Request;
 }) => {
   const sessionToken = generateSessionToken();
@@ -46,6 +46,7 @@ export const createSession = async ({
       id: user.id,
       email: user.email,
       role: user.role,
+      teamId: user.teamId,
     },
   };
 };

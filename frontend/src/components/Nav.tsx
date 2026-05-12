@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { logout } from "../service/auth";
 
@@ -12,6 +12,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 const Nav = () => {
   const auth = useAuth();
+  const navigate = useNavigate();
   const session = auth?.session;
   const setSession = auth?.setSession;
   const userId = session?.userId ?? "";
@@ -19,6 +20,7 @@ const Nav = () => {
   const handleSignOut = async () => {
     try {
       await logout();
+      navigate("/");
     } catch (err) {
       console.error(err);
     } finally {

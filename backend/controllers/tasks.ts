@@ -2,13 +2,12 @@ import type { Request, Response } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../config/db";
 import { tasks as tasksTable } from "../config/schema";
-import { users as usersTable } from "../config/schema";
 import type { NewTask } from "../types";
 import { parseId } from "../utils";
 
 export const createTask = async (req: Request, res: Response) => {
   try {
-    const { title, description, dueDate, priority, category, status } =
+    const { title, description, dueDate, priority, category, status, teamId } =
       req.body as Partial<NewTask>;
 
     if (!title || !description) {
@@ -21,6 +20,7 @@ export const createTask = async (req: Request, res: Response) => {
       .insert(tasksTable)
       .values({
         userId: req.user!.id,
+        teamId: teamId ?? null,
         title,
         description,
         dueDate: dueDate ? new Date(dueDate) : null,
@@ -45,8 +45,7 @@ export const getTasksByTeamId = async (req: Request, res: Response) => {
     const tasks = await db
       .select()
       .from(tasksTable)
-      .innerJoin(usersTable, eq(tasksTable.userId, usersTable.id))
-      .where(eq(usersTable.teamId, teamId));
+      .where(eq(tasksTable.teamId, teamId));
     res.status(200).json(tasks);
   } catch (err) {
     res.status(500).json({ message: "Internal server error" });
@@ -113,7 +112,7 @@ export const updateTask = async (req: Request, res: Response) => {
         .json({ message: "Unauthorized to update this task" });
     }
 
-    const { title, description, dueDate, priority, category, status } =
+    const { title, description, dueDate, priority, category, status, teamId } =
       req.body as Partial<NewTask>;
 
     const [updatedTask] = await db
@@ -125,6 +124,7 @@ export const updateTask = async (req: Request, res: Response) => {
         priority,
         category,
         status,
+        teamId: teamId === undefined ? undefined : teamId,
         updatedAt: new Date(),
       })
       .where(eq(tasksTable.id, id))
