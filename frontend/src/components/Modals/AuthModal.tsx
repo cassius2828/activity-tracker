@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { login, register } from "../../service/auth";
 import LoginForm from "./LoginForm";
 import SignupForm from "./SignupForm";
@@ -11,6 +11,7 @@ import {
   authPageWrapClass,
 } from "./styles";
 import type { AuthFormValues, SubmitAuthPayload } from "./types";
+import { useAuth } from "../../context/AuthContext";
 
 const emptyForm = (): AuthFormValues => ({
   email: "",
@@ -19,6 +20,8 @@ const emptyForm = (): AuthFormValues => ({
 });
 
 const AuthModal = () => {
+  const navigate = useNavigate();
+  const { session, setSession } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const mode = searchParams.get("mode");
@@ -30,17 +33,36 @@ const AuthModal = () => {
     password,
     confirmPassword,
   }: SubmitAuthPayload) => {
+    const baseSession = session ?? {
+      userId: "",
+      email: "",
+      role: "user" as const,
+      teamId: null,
+    };
     setIsLoading(true);
     try {
       if (isLogin) {
-        await login({ email, password });
+        const response = await login({ email, password });
+        setSession({
+          ...baseSession,
+          userId: String(response.user.id),
+          email: response.user.email,
+          role: response.user.role,
+        });
       } else {
-        await register({
+        const response = await register({
           email,
           password,
           confirmPassword: confirmPassword ?? "",
         });
+        setSession({
+          ...baseSession,
+          userId: String(response.user.id),
+          email: response.user.email,
+          role: response.user.role,
+        });
       }
+      navigate("/teams");
     } catch (err) {
       console.error(err);
     } finally {

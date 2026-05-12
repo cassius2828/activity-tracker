@@ -1,11 +1,14 @@
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
-import { sessions, tasks, users } from "./config/schema";
+import { sessions, tasks, teams, users } from "./config/schema";
 
 export type User = InferSelectModel<typeof users>;
 export type NewUser = InferInsertModel<typeof users>;
 
 export type Task = InferSelectModel<typeof tasks>;
 export type NewTask = InferInsertModel<typeof tasks>;
+
+export type Team = InferSelectModel<typeof teams>;
+export type NewTeam = InferInsertModel<typeof teams>;
 
 /** Row from `sessions` table — not the same as `express-session`’s `req.session`. */
 export type DbSession = InferSelectModel<typeof sessions>;

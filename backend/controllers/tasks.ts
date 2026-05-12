@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../config/db";
 import { tasks as tasksTable } from "../config/schema";
+import { users as usersTable } from "../config/schema";
 import type { NewTask } from "../types";
 import { parseId } from "../utils";
 
@@ -41,7 +42,11 @@ export const getTasksByTeamId = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "Invalid team id" });
   }
   try {
-    const tasks = await db.select().from(tasksTable);
+    const tasks = await db
+      .select()
+      .from(tasksTable)
+      .innerJoin(usersTable, eq(tasksTable.userId, usersTable.id))
+      .where(eq(usersTable.teamId, teamId));
     res.status(200).json(tasks);
   } catch (err) {
     res.status(500).json({ message: "Internal server error" });
@@ -97,13 +102,15 @@ export const updateTask = async (req: Request, res: Response) => {
       .select()
       .from(tasksTable)
       .where(eq(tasksTable.id, id));
-      
+
     if (!taskToUpdate) {
       return res.status(404).json({ message: "Task not found" });
     }
 
     if (req.user!.id !== taskToUpdate.userId) {
-      return res.status(403).json({ message: "Unauthorized to update this task" });
+      return res
+        .status(403)
+        .json({ message: "Unauthorized to update this task" });
     }
 
     const { title, description, dueDate, priority, category, status } =

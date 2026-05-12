@@ -1,16 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { getTasksByTeamId, getTasksByUserId, type Task } from "../service/tasks";
+import {
+  assignUserToTeam,
+  getTeamById,
+  leaveTeam,
+  requestJoinTeam,
+  searchUsers,
+  type TeamUser,
+} from "../service/teams";
 
 type Priority = "none" | "low" | "medium" | "high";
-
-type DummyTask = {
-  id: string;
-  title: string;
-  description: string;
-  dueDate: string;
-  priority: Priority;
-};
-
-const DUMMY_TASKS: DummyTask[] = [];
 
 const priorityLabel: Record<Priority, string> = {
   none: "None",
@@ -32,12 +33,30 @@ const inputClass =
   "focus:border-[var(--accent-border)] focus:ring-2 focus:ring-[var(--accent)]/25";
 
 const Tasks = () => {
+  const { session, setSession } = useAuth();
+  const { teamId, userId } = useParams();
+
   const [query, setQuery] = useState("");
   const [priority, setPriority] = useState<"all" | Priority>("all");
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+  const [tasksError, setTasksError] = useState<string | null>(null);
+  const [teamName, setTeamName] = useState<string | null>(null);
+  const [teamActionNotice, setTeamActionNotice] = useState<string | null>(null);
+  const [isTeamActionLoading, setIsTeamActionLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<TeamUser[]>([]);
+  const [isSearchingUsers, setIsSearchingUsers] = useState(false);
+  const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
+
+  const currentUserId = session?.userId ?? userId ?? "1";
+  const isViewingTeamTasks = Boolean(teamId);
+  const isMemberOfViewedTeam = Boolean(teamId && session?.teamId === teamId);
+  const isAdmin = session?.role === "admin";
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return DUMMY_TASKS.filter((t) => {
+    return tasks.filter((t) => {
       const matchesText =
         !q ||
         t.title.toLowerCase().includes(q) ||
@@ -45,7 +64,92 @@ const Tasks = () => {
       const matchesPriority = priority === "all" || t.priority === priority;
       return matchesText && matchesPriority;
     });
-  }, [query, priority]);
+  }, [query, priority, tasks]);
+
+  useEffect(() => {
+    if (!teamId) return;
+
+    const loadTeam = async () => {
+      const result = await getTeamById(teamId);
+      setTeamName(result.data?.name ?? null);
+      if (result.source === "local") {
+        setTeamActionNotice("Using local fallback for team actions and membership.");
+      }
+    };
+
+    void loadTeam();
+  }, [teamId]);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      setIsLoadingTasks(true);
+      setTasksError(null);
+      try {
+        const data = teamId ? await getTasksByTeamId(teamId) : await getTasksByUserId(currentUserId);
+        setTasks(data);
+      } catch (err) {
+        console.error(err);
+        setTasks([]);
+        setTasksError("Could not load tasks right now.");
+      } finally {
+        setIsLoadingTasks(false);
+      }
+    };
+    void fetchTasks();
+  }, [teamId, currentUserId]);
+
+  const handleLeaveTeam = async () => {
+    if (!teamId) return;
+    setIsTeamActionLoading(true);
+    const result = await leaveTeam({ teamId, userId: currentUserId });
+    if (session?.userId === currentUserId) {
+      setSession({ ...session, teamId: null });
+    }
+    setTeamActionNotice(
+      result.source === "local" ? "You left the team (local fallback mode)." : result.data.message,
+    );
+    setIsTeamActionLoading(false);
+  };
+
+  const handleJoinRequest = async () => {
+    if (!teamId) return;
+    setIsTeamActionLoading(true);
+    const result = await requestJoinTeam({ teamId, userId: currentUserId });
+    setTeamActionNotice(
+      result.source === "local"
+        ? "Join request submitted (local fallback mode)."
+        : result.data.message,
+    );
+    setIsTeamActionLoading(false);
+  };
+
+  const handleSearchUsers = async () => {
+    setIsSearchingUsers(true);
+    const result = await searchUsers(searchQuery);
+    setSearchResults(result.data);
+    if (result.source === "local") {
+      setTeamActionNotice("User search is using local fallback data.");
+    }
+    setIsSearchingUsers(false);
+  };
+
+  const handleAssignUser = async (targetUserId: string) => {
+    if (!teamId) return;
+    setAssigningUserId(targetUserId);
+    const result = await assignUserToTeam({
+      teamId,
+      userId: targetUserId,
+    });
+    setSearchResults((previous) =>
+      previous.map((user) => (user.id === targetUserId ? { ...user, teamId } : user)),
+    );
+    setTeamActionNotice(
+      result.source === "local"
+        ? `Assigned ${result.data.email} in local fallback mode.`
+        : `Assigned ${result.data.email} to the team.`,
+    );
+    setAssigningUserId(null);
+  };
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 text-left sm:px-6 sm:py-10">
@@ -54,12 +158,118 @@ const Tasks = () => {
           Tasks
         </p>
         <h1 className="!m-0 !text-3xl !tracking-tight text-[var(--text-h)] sm:!text-4xl">
-          Your work
+          {isViewingTeamTasks ? (teamName ? `${teamName} team work` : "Team work") : "Your work"}
         </h1>
         <p className="text-[15px] text-[var(--text)]">
-          Dummy list for layout—swap for API data when ready.
+          {isViewingTeamTasks
+            ? "View team tasks and manage team participation."
+            : "Tasks scoped to this user."}
         </p>
       </header>
+
+      {isViewingTeamTasks && teamId && (
+        <section className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="!m-0 !text-lg !tracking-tight text-[var(--text-h)]">Team actions</h2>
+              <p className="mt-1 text-[14px] text-[var(--text)]">
+                Team ID <span className="font-mono text-[var(--text-h)]">{teamId}</span>
+              </p>
+            </div>
+            {isMemberOfViewedTeam ? (
+              <button
+                type="button"
+                onClick={() => void handleLeaveTeam()}
+                disabled={isTeamActionLoading}
+                className="rounded-xl border border-rose-400/40 bg-rose-500/10 px-4 py-2 text-[14px] font-medium text-rose-800 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:text-rose-100"
+              >
+                {isTeamActionLoading ? "Leaving..." : "Leave team"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void handleJoinRequest()}
+                disabled={isTeamActionLoading}
+                className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[14px] font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isTeamActionLoading ? "Submitting..." : "Request to join team"}
+              </button>
+            )}
+          </div>
+
+          {teamActionNotice && (
+            <p className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--code-bg)] px-3 py-2 text-[14px] text-[var(--text)]">
+              {teamActionNotice}
+            </p>
+          )}
+
+          {isAdmin && (
+            <div className="mt-5 border-t border-[var(--border)] pt-4">
+              <h3 className="!m-0 !text-base !tracking-tight text-[var(--text-h)]">
+                Assign users to this team
+              </h3>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  className={inputClass}
+                  placeholder="Search by email"
+                  type="search"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleSearchUsers()}
+                  disabled={isSearchingUsers}
+                  className="rounded-xl border border-[var(--border)] px-4 py-2 text-[14px] font-medium text-[var(--text-h)] transition hover:bg-[var(--code-bg)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSearchingUsers ? "Searching..." : "Search users"}
+                </button>
+              </div>
+
+              {searchResults.length > 0 && (
+                <ul className="mt-4 space-y-2">
+                  {searchResults.map((user) => {
+                    const isAlreadyInTeam = user.teamId === teamId;
+                    return (
+                      <li
+                        key={user.id}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] px-3 py-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-[14px] font-medium text-[var(--text-h)]">
+                            {user.email}
+                          </p>
+                          <p className="text-[12px] text-[var(--text)]">
+                            {user.role} {user.teamId ? `• current team: ${user.teamId}` : "• no team"}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void handleAssignUser(user.id)}
+                          disabled={isAlreadyInTeam || assigningUserId === user.id}
+                          className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-[13px] font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isAlreadyInTeam
+                            ? "Already added"
+                            : assigningUserId === user.id
+                              ? "Adding..."
+                              : "Add"}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
+      {tasksError && (
+        <p className="mb-6 rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-[14px] text-amber-900 dark:text-amber-100">
+          {tasksError}
+        </p>
+      )}
 
       <section
         aria-label="Filters"
@@ -125,17 +335,26 @@ const Tasks = () => {
               <p className="mt-3 text-[13px] text-[var(--text)]">
                 Due{" "}
                 <time dateTime={task.dueDate} className="font-medium text-[var(--text-h)]">
-                  {task.dueDate}
+                  {task.dueDate || "No due date"}
                 </time>
+                <Link to={`/tasks/${task.id}`} className="ml-2 text-[var(--text-h)] underline-offset-2 hover:underline">
+                  View details
+                </Link>
               </p>
             </article>
           </li>
         ))}
       </ul>
 
-      {filtered.length === 0 && (
+      {!isLoadingTasks && filtered.length === 0 && (
         <p className="rounded-2xl border border-dashed border-[var(--border)] py-12 text-center text-[15px] text-[var(--text)]">
           No tasks match these filters.
+        </p>
+      )}
+
+      {isLoadingTasks && (
+        <p className="rounded-2xl border border-[var(--border)] py-8 text-center text-[15px] text-[var(--text)]">
+          Loading tasks...
         </p>
       )}
     </div>

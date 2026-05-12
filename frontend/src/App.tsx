@@ -1,12 +1,13 @@
 import "./App.css";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import Auth from './pages/Auth'
 import Tasks from './pages/Tasks'
 import Profile from './pages/Profile'
 import Home from './pages/Home'
 import Nav from './components/Nav'
 import Footer from './components/Footer'
-
+import TaskDetails from './pages/TaskDetails'
+import Teams from "./pages/Teams.tsx";
 function App() {
   return (
     <>
@@ -15,7 +16,11 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/tasks" element={<Tasks />} />
+          <Route path="/teams" element={<Teams />} />
+          <Route path="/tasks" element={<Navigate to="/teams" replace />} />
+          <Route path="/tasks/team/:teamId" element={<Tasks />} />
+          <Route path="/tasks/user/:userId" element={<Tasks />} />
+          <Route path="/tasks/:id" element={<TaskDetails />} />
           <Route path="/profile/:id" element={<Profile />} />
         </Routes>
       </main>

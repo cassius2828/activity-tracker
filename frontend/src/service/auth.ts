@@ -14,6 +14,12 @@ type AuthUser = {
   role: "admin" | "user";
 };
 
+type Session = {
+  id: string;
+  userId: number;
+  expiresAt: string;
+};
+
 type AuthResponse = {
   message: string;
   user: AuthUser;
@@ -50,4 +56,16 @@ const logout = async () => {
   }
 };
 
-export { login, register, logout };
+const getSession = async () => {
+  try {
+    const response = await api.get<{ message: string; session: Session }>(
+      "/auth/session",
+    );
+    return response.data;
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
+};
+
+export { login, register, logout, getSession };
